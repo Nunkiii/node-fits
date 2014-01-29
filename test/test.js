@@ -5,7 +5,7 @@
 */
 
 
-var fits=require("./build/Release/fits");
+var fits=require("../build/Release/fits");
 
 var f = new fits.file();
 
