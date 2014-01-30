@@ -3,8 +3,6 @@
 #ifndef __COLORMAP_HH__
 #define __COLORMAP_HH__
 
-/* Coded by Pierre-G Sprimont <fullmoon@swing.be>  */
-
 #include "vec.hh"
 #include "lst.hh"
 
