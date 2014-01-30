@@ -4,6 +4,14 @@
 	    "target_name": "fits",	
 	    "sources": [ "colormap/colormap_interface.cpp", "fits/fits.cpp", "qk/exception.cpp", "qk/pngwriter.cpp"],
 	    'include_dirs' : ["."],
+
+	    'xcode_settings': {
+		'OTHER_CFLAGS': [
+		    '-fexceptions', 
+		    '-frtti' 
+		],
+	    },
+
 	    'conditions': [
 	    	
 		['OS=="mac"', {
