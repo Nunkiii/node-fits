@@ -6,16 +6,15 @@
 	    'include_dirs' : ["."],
 	    'conditions': [
 	    	
-	    	}],
-        	['OS=="mac"', {
+		['OS=="mac"', {
 		    'ldflags': ['-lcfitsio','-lpng'],
 		    'cflags_cc': [ '-fexceptions', '-frtti'],
 		    'cflags_cc!': [
 			'-fno-exceptions',
 		    ]
-        		
-        		
-        		}],
+        	    
+        	    
+        	}],
 	    	
 	    	
 		['OS=="linux"', {
