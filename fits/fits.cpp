@@ -17,9 +17,10 @@
 
 #ifdef __APPLE__
 #ifdef __cplusplus
-extern "C"
-#include "open_memstream.c"
-#include "fmemopen.c"
+extern "C" {
+FILE * open_memstream (char **buf, size_t *len);
+FILE *fmemopen(void *buf, size_t size, const char *mode);
+}
 #endif
 #endif
 
