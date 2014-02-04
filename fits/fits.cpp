@@ -15,6 +15,15 @@
 */
 
 
+#ifdef __APPLE__
+#ifdef __cplusplus
+extern "C"
+#include "open_memstream.c"
+#include "fmemopen.c"
+#endif
+#endif
+
+
 using namespace v8;
 using namespace node;
 using namespace std;
