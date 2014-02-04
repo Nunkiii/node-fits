@@ -3,13 +3,18 @@
 	{
 	    "target_name": "fits",	
 	    "sources": [ "colormap/colormap_interface.cpp", "fits/fits.cpp", "qk/exception.cpp", "qk/pngwriter.cpp"],
-	    'include_dirs' : ["."],
+	    'include_dirs' : [".","/usr/local/cfitsio/include"],
 
 	    'xcode_settings': {
 		'OTHER_CFLAGS': [
-		    '-fexceptions', 
+		    '-fexceptions'
+		],
+		'OTHER_CPLUSPLUSFLAGS': [
+		    '-fexceptions',
 		    '-frtti' 
 		],
+		'OTHER_LDFLAGS': ["-L/usr/local/cfitsio/lib", '-lcfitsio', "-L/opt/local/lib", '-lpng'
+		]
 	    },
 
 	    'conditions': [
@@ -19,8 +24,9 @@
 		    'cflags_cc': [ '-fexceptions', '-frtti'],
 		    'cflags_cc!': [
 			'-fno-exceptions',
-		    ]
-        	    
+		    ],
+                 "sources": [ "fits/fmemopen.c", "fits/open_memstream.c"],
+	         'include_dirs' : ["/opt/local/include/libpng16"]
         	    
         	}],
 	    	
