@@ -10,6 +10,16 @@
 
 #include <colormap/colormap_interface.hh>
 
+#ifdef __APPLE__
+#ifdef __cplusplus
+extern "C" {
+FILE * open_memstream (char **buf, size_t *len);
+FILE *fmemopen(void *buf, size_t size, const char *mode);
+}
+#endif
+#endif
+
+
 namespace sadira{
 
   using namespace qk;
