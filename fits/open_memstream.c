@@ -38,8 +38,8 @@ struct data
 typedef struct data data;
 
 /* Stupid BSD interface uses int/int instead of ssize_t/size_t.  */
-verify (sizeof (int) <= sizeof (size_t));
-verify (sizeof (int) <= sizeof (ssize_t));
+//verify (sizeof (int) <= sizeof (size_t));
+//verify (sizeof (int) <= sizeof (ssize_t));
 
 static int
 mem_write (void *c, const char *buf, int n)
@@ -180,4 +180,3 @@ open_memstream (char **buf, size_t *len)
         }
    return f;
  }
-#endif /* HAVE_FUNOPEN */
