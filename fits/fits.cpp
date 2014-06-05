@@ -4,22 +4,11 @@
 #include "fits.hh"
 
 
-/*
-#include <qk/pngwriter.hh>
-
-#include "lst.hh"
-#include "colormap.hh"
-#include "lst.hh"
-#include "mat.hh"
-#include "exception.hh"
-*/
-
-
 #ifdef __APPLE__
 #ifdef __cplusplus
 extern "C" {
-FILE * open_memstream (char **buf, size_t *len);
-FILE *fmemopen(void *buf, size_t size, const char *mode);
+  FILE * open_memstream (char **buf, size_t *len);
+  FILE *fmemopen(void *buf, size_t size, const char *mode);
 }
 #endif
 #endif
@@ -46,8 +35,8 @@ namespace sadira{
   fits::fits() {
     fstat=0;
     f=0;
+    file_name="";
     ffitsio_error = fmemopen(fitsio_error_buffer,sizeof(fitsio_error_buffer),"w");
-    cout << "FITS create ptr=" << this << endl;
   }
   
   fits::~fits() {
@@ -56,6 +45,8 @@ namespace sadira{
   }
   
   void fits::open_file(int _mode){
+    if(f!=0) return;
+
     if(file_name==""){
       throw qk::exception("No file name set, use set_file command to provide one");
     }
@@ -83,7 +74,7 @@ namespace sadira{
       }
       else
 	fits_create_file(&f, file_name.c_str(), &fstat);
-    break;
+      break;
     case 2:
       fits_open_file(&f, file_name.c_str(),READWRITE, &fstat);
       break;
@@ -103,18 +94,19 @@ namespace sadira{
   
 
   void fits::close_file() {
-    if(f)
-      fits_close_file(f, &fstat);report_fits_error();
-    f=0;
-    
+    if(f){
+      fits_close_file(f, &fstat);
+      f=0;
+      report_fits_error();
+    }
   }
   
   void fits::write_key_str(const string& _keyword, const string& _key_val, const string& _comment){
     //ffpky(f, TSTRING, (char*)_keyword.c_str(), (char*)_key_val.c_str(),(char*) _comment.c_str(), &fstat);
     //MINFO << get_info() << " writing key [" << _keyword << "]"<<endl;
   
-  ffuky(f, TSTRING, (char*)_keyword.c_str(), (char*)_key_val.c_str(),(char*) _comment.c_str(), &fstat);
-  report_fits_error();
+    ffuky(f, TSTRING, (char*)_keyword.c_str(), (char*)_key_val.c_str(),(char*) _comment.c_str(), &fstat);
+    report_fits_error();
   }
   
   void fits::read_key_str(const string& _key_name,string& _key_val){
@@ -128,14 +120,14 @@ namespace sadira{
   
   void fits::set_current_hdu(int _hdu_id){
     check_file_is_open();
-    cout << "Ok the file is opened " << endl;
-    if(c_hdu!=_hdu_id){
-      fstat=0;
-      ffmahd (f, _hdu_id+1, NULL, &fstat);  
-      c_hdu=_hdu_id;
-      report_fits_error();
+    
+    //if(c_hdu!=_hdu_id){
+    fstat=0;
+    ffmahd (f, _hdu_id+1, NULL, &fstat);  
+    c_hdu=_hdu_id;
+    report_fits_error();
     //get_img_hdu_size();
-    }
+    //}
   }
   
   
@@ -166,6 +158,7 @@ namespace sadira{
 
 
   void fits::get_img_hdu_size(mem<long>&hdims){
+    set_current_hdu(c_hdu);
     fstat=0;
     //    MINFO << "Getting hdu dimensions..."<<endl;
     int img_hdu_ndims=0;
@@ -203,27 +196,27 @@ namespace sadira{
   
 
 
-Handle<Value> fits::New(const Arguments& args) {
-  HandleScope scope;
+  Handle<Value> fits::New(const Arguments& args) {
+    HandleScope scope;
 
-  fits* obj = new fits();
-  //  obj->counter_ = args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
+    fits* obj = new fits();
+    //  obj->counter_ = args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
 
-  string fn;
+    string fn;
 
-  if(!args[0]->IsUndefined()){
-    v8::String::Utf8Value s(args[0]->ToString());
-    fn=*s;
-  }else
-    fn="default.fits";
+    if(!args[0]->IsUndefined()){
+      v8::String::Utf8Value s(args[0]->ToString());
+      fn=*s;
+    }else
+      fn="default.fits";
 
-  args.This()->Set(String::NewSymbol("file_name"), String::New(fn.c_str()));
+    args.This()->Set(String::NewSymbol("file_name"), String::New(fn.c_str()));
   
 
-  obj->Wrap(args.This());
+    obj->Wrap(args.This());
 
-  return args.This();
-}
+    return args.This();
+  }
 
 
   string fits::get_file_name(const Arguments& args) {
@@ -244,403 +237,474 @@ Handle<Value> fits::New(const Arguments& args) {
     obj->file_name=obj->get_file_name(args);
     
 
-  //  v8::String::Utf8Value fits_file_path(args[0]->ToString());
-  //obj->file_name=*fits_file_path;
+    //  v8::String::Utf8Value fits_file_path(args[0]->ToString());
+    //obj->file_name=*fits_file_path;
   
-  return scope.Close(args.This());
-}
+    return scope.Close(args.This());
+  }
 
 
-v8::Handle<v8::Object> fits::get_headers(){
-  
-  //  v8::Handle<v8::Object> result = v8::Object::New();
-  v8::Local<v8::Array> hdus = v8::Array::New();
-
-
-  int hdupos, nkeys, nhdu, ii,ih, hdutype;
-
-  char kname[FLEN_KEYWORD];
-  char kvalue[FLEN_VALUE];
-  char kcomment[FLEN_COMMENT];
-  
-  open_file();
-  
-  fits_get_num_hdus(f, &nhdu,&fstat); report_fits_error();  /* Get the current HDU position */
-  fits_get_hdu_num(f, &hdupos);  /* Get the current HDU position */
-  fits_get_hdrspace(f, &nkeys, NULL, &fstat); /* get # of keywords */
-  
-  for (ih = 1; ih <= nhdu; ih++) { /* Read and print each hdu */
-
-    fits_movabs_hdu(f,ih,&hdutype,&fstat); report_fits_error();
-
-    v8::Handle<v8::Object> hdu = v8::Object::New();
-    v8::Local<v8::Array> fits_keys = v8::Array::New();
-
-    hdus->Set(v8::Number::New(ih-1), hdu);
+  v8::Handle<v8::Object> fits::get_headers(){
     
-    for (ii = 1; ii <= nkeys; ii++) { /* Read and print each keywords */
-      fits_read_keyn(f, ii, kname, kvalue, kcomment, &fstat); report_fits_error();
-      
-      //v8::Handle<v8::Object> key = v8::Object::New();
-      v8::Local<v8::Array> key = v8::Array::New();
+    //  v8::Handle<v8::Object> result = v8::Object::New();
+    v8::Local<v8::Array> hdus = v8::Array::New();
+    
 
-      key->Set(v8::Number::New(0),String::New( kname));
-      key->Set(v8::Number::New(1),String::New( kvalue));
-      key->Set(v8::Number::New(2),String::New( kcomment));
+    int hdupos, nkeys, nhdu, ii,ih, hdutype;
+
+    char kname[FLEN_KEYWORD];
+    char kvalue[FLEN_VALUE];
+    char kcomment[FLEN_COMMENT];
+  
+    open_file();
+  
+    fits_get_num_hdus(f, &nhdu,&fstat); report_fits_error();  /* Get the current HDU position */
+    fits_get_hdu_num(f, &hdupos);  /* Get the current HDU position */
+    fits_get_hdrspace(f, &nkeys, NULL, &fstat); /* get # of keywords */
+  
+    for (ih = 1; ih <= nhdu; ih++) { /* Read and print each hdu */
+
+      fits_movabs_hdu(f,ih,&hdutype,&fstat); report_fits_error();
+
+      v8::Handle<v8::Object> hdu = v8::Object::New();
+      v8::Local<v8::Array> fits_keys = v8::Array::New();
+
+      hdus->Set(v8::Number::New(ih-1), hdu);
+    
+      for (ii = 1; ii <= nkeys; ii++) { /* Read and print each keywords */
+	fits_read_keyn(f, ii, kname, kvalue, kcomment, &fstat); report_fits_error();
       
-      fits_keys->Set(v8::Number::New(ii-1), key);
+	//v8::Handle<v8::Object> key = v8::Object::New();
+	v8::Local<v8::Array> key = v8::Array::New();
+
+	key->Set(v8::Number::New(0),String::New( kname));
+	key->Set(v8::Number::New(1),String::New( kvalue));
+	key->Set(v8::Number::New(2),String::New( kcomment));
+      
+	fits_keys->Set(v8::Number::New(ii-1), key);
+      }
+
+      string type_name="bug";
+      if(hdutype==IMAGE_HDU) type_name="image";
+      else if(hdutype==ASCII_TBL) type_name="ascii_table";
+      else if(hdutype==BINARY_TBL) type_name="binary_table";
+
+      hdu->Set(String::New("type"),String::New(type_name.c_str()));  
+      hdu->Set(String::New("keywords"),fits_keys);
+
     }
+  
+    close_file();
+    return hdus;
+  }
 
-    string type_name="bug";
-    if(hdutype==IMAGE_HDU) type_name="image";
-    else if(hdutype==ASCII_TBL) type_name="ascii_table";
-    else if(hdutype==BINARY_TBL) type_name="binary_table";
 
-    hdu->Set(String::New("type"),String::New(type_name.c_str()));  
-    hdu->Set(String::New("keywords"),fits_keys);
+  v8::Handle<v8::Object> fits::get_headers_array(){
+  
+    //  v8::Handle<v8::Object> result = v8::Object::New();
+    v8::Local<v8::Array> hdus = v8::Array::New();
+
+
+    int hdupos, nkeys, nhdu, ii,ih, hdutype;
+
+    char kname[FLEN_KEYWORD];
+    char kvalue[FLEN_VALUE];
+    char kcomment[FLEN_COMMENT];
+  
+    open_file();
+  
+    fits_get_num_hdus(f, &nhdu,&fstat); report_fits_error();  /* Get the current HDU position */
+    fits_get_hdu_num(f, &hdupos);  /* Get the current HDU position */
+    fits_get_hdrspace(f, &nkeys, NULL, &fstat); /* get # of keywords */
+  
+    for (ih = 1; ih <= nhdu; ih++) { /* Read and print each hdu */
+
+      fits_movabs_hdu(f,ih,&hdutype,&fstat); report_fits_error();
+
+      v8::Handle<v8::Object> hdu = v8::Object::New();
+      v8::Local<v8::Array> fits_keys = v8::Array::New();
+
+      hdus->Set(v8::Number::New(ih-1), hdu);
+    
+      for (ii = 1; ii <= nkeys; ii++) { /* Read and print each keywords */
+	fits_read_keyn(f, ii, kname, kvalue, kcomment, &fstat); report_fits_error();
+      
+	//v8::Handle<v8::Object> key = v8::Object::New();
+	v8::Local<v8::Array> key = v8::Array::New();
+
+	key->Set(v8::Number::New(0),String::New( kname));
+	key->Set(v8::Number::New(1),String::New( kvalue));
+	key->Set(v8::Number::New(2),String::New( kcomment));
+      
+	fits_keys->Set(v8::Number::New(ii-1), key);
+      }
+
+      string type_name="bug";
+      if(hdutype==IMAGE_HDU) type_name="image";
+      else if(hdutype==ASCII_TBL) type_name="ascii_table";
+      else if(hdutype==BINARY_TBL) type_name="binary_table";
+
+      hdu->Set(String::New("type"),String::New(type_name.c_str()));  
+      hdu->Set(String::New("keywords"),fits_keys);
+
+    }
+  
+    close_file();
+    return hdus;
+  }
+
+  Handle<Value> fits::get_headers(const Arguments& args) {
+
+    HandleScope scope;
+
+
+    fits* obj = ObjectWrap::Unwrap<fits>(args.This());
+    obj->file_name=obj->get_file_name(args);
+
+    return scope.Close(obj->get_headers());
+
 
   }
+
+  Handle<Value> fits::get_headers_array(const Arguments& args) {
+
+    HandleScope scope;
+
+
+    fits* obj = ObjectWrap::Unwrap<fits>(args.This());
+    obj->file_name=obj->get_file_name(args);
+
+    return scope.Close(obj->get_headers());
+
+
+  }
+
+
+  Handle<Value> fits::gen_histogram(const Arguments& args) {
+
+
+    //cout << "gen histo for " << obj->file_name << endl;
+
+    HandleScope scope;
+
+    fits* obj = ObjectWrap::Unwrap<fits>(args.This());
+    obj->file_name=obj->get_file_name(args);
+
+    if (args.Length() < 1) {
+      ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
+      return scope.Close(Undefined());
+    }
+
+    Local<Object> ar = args[0]->ToObject();
+    /*
+      Local<Array> props = ar->GetPropertyNames();
+
+      for(unsigned int p=0; p<props->Length();p++){
+      String::AsciiValue val(props->Get(p)->ToString());
+      cout << " pr " << p << " = " << *val << endl;
+      }
+    */
+    Local<Array> cuts_array = Local<Array>::Cast(ar->Get(String::New("cuts")));
+
+    double cuts[2];
+    cuts[0]= cuts_array->Get(0)->ToNumber()->Value();
+    cuts[1]= cuts_array->Get(1)->ToNumber()->Value();
+
   
-  close_file();
-  return hdus;
-}
 
-Handle<Value> fits::get_headers(const Arguments& args) {
-
-  HandleScope scope;
+    //String::Utf8Value fits_file_path(args[0]->ToString());
+    //Handle<Object> cuts = (*args[0])["cuts"];
+    //double cut0 = args[0]["cuts"];
 
 
-  fits* obj = ObjectWrap::Unwrap<fits>(args.This());
-  obj->file_name=obj->get_file_name(args);
+    //  Handle<Object> result = Object::New();
+    Handle<String> histo_csv_data = obj->create_image_histogram(cuts);
 
-  return scope.Close(obj->get_headers());
+    //  cout << " HISTO OK : " << *(String::AsciiValue(histo_csv_data->ToString())) << endl;
 
-
-}
-
-
-Handle<Value> fits::gen_histogram(const Arguments& args) {
+    return scope.Close(histo_csv_data);
+  }
 
 
-  //cout << "gen histo for " << obj->file_name << endl;
+  Handle<String> fits::create_image_histogram(double* cuts){
 
-  HandleScope scope;
+    try{
 
-  fits* obj = ObjectWrap::Unwrap<fits>(args.This());
-  obj->file_name=obj->get_file_name(args);
+      string result_string;
+      int img_hdu_ndims=0;
+      mem<long> img_hdu_dims;
+      mem<long> fpix;
+      float nulv=0.0f;
+      // float value;
+      int anynul;
+      //int longest_dim=0;
 
-  if (args.Length() < 1) {
-    ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
+      //cout << "Creating histogram ..." << endl;
+    
+      open_file();
+      fits_get_img_dim(f, &img_hdu_ndims, &fstat);report_fits_error();
+
+      img_hdu_dims.redim(img_hdu_ndims);
+    
+      if(img_hdu_ndims!=2){
+	throw qk::exception("Unsupported number of dimensions in image, aborting.");
+      }
+    
+      fpix.redim(img_hdu_ndims);
+      for(int d=0;d<img_hdu_ndims;d++) fpix[d]=1;
+
+      //cout << "ndims="<< img_hdu_ndims  << endl;
+    
+      fits_get_img_size(f, img_hdu_ndims, img_hdu_dims.c, &fstat);report_fits_error();
+
+      mat<float> imgdata(img_hdu_dims[0],img_hdu_dims[1]);
+
+      //cout << "read image : " << img_hdu_dims[0] << ", " << img_hdu_dims[1] << endl;
+    
+      fits_read_pix(f, TFLOAT, fpix.c, imgdata.dim ,&nulv,imgdata.c, &anynul, &fstat);report_fits_error();
+    
+      //cout << "OK" << endl;
+
+      int nbins=200;
+
+      float low= (int) cuts[0];
+      float max= (int) cuts[1];
+    
+      if(low==-1||max==-1){
+	low=imgdata.min();
+	max=imgdata.max();
+      }
+    
+      //cout << "OK2" << endl;
+
+      float bsize=(max-low)/nbins;
+    
+      if(bsize<1){
+	bsize=1.0;
+	nbins=max-low;
+      }
+    
+      vec<unsigned int> histo(nbins);
+      histo.set_all(0);
+    
+      for(int d=0;d<imgdata.dim;d++) 
+	if(imgdata[d]>=low&&imgdata[d]<max){
+	  int bid=(int)( (imgdata[d]-low)/bsize);
+	  if(bid>=0&&bid<histo.dim)
+	    histo[bid]++; 
+	}
+
+      //cout << "OK3" << endl;
+    
+      result_string="pixvalue\tndata\n";
+
+      char sb[256];
+
+      for(int i=0;i<nbins;i++){
+	sprintf(sb,"%g\t%g\n",low+(i+.5)*bsize, histo[i]*1.0);
+	result_string+=sb;
+      }
+
+      close_file();
+    
+      //cout << "OK4" << endl;
+    
+      Handle<String> result = v8::String::New(result_string.c_str());
+
+      //cout << "OK5" << endl;
+      return result;
+    }
+  
+    catch (qk::exception& e){
+      //cout << "Catch qk exception " << endl;
+      v8::ThrowException(v8::String::New(e.mess.c_str()));
+    }
+
+
+
+    return Handle<String>();
+  }
+
+
+  v8::Handle<v8::Value> fits::set_hdu(const v8::Arguments& args){
+
+    HandleScope scope;
+
+    if (args.Length() < 1) {
+      ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
+      return scope.Close(Undefined());
+    }
+
+    fits* obj = ObjectWrap::Unwrap<fits>(args.This());
+    //obj->file_name=obj->get_file_name(args);
+
+    int hduid = args[0]->ToNumber()->Value();
+    cout << "setting hdu to " << hduid << endl;
+
+    //Handle<Array> cutsa = Handle<Array>::Cast(args[0]);
+    try{
+      obj->file_name=obj->get_file_name(args);
+      obj->open_file(0);
+      obj->set_current_hdu(hduid);
+      //cout << "setting hdu to " << hduid << "OK!!!!!"<<endl;
+      return Handle<Object>(args.This());
+    }
+
+    
+    catch (qk::exception& e){
+      v8::ThrowException(v8::String::New(e.mess.c_str()));
+      return scope.Close(Undefined());
+    }
+
+  }
+
+  v8::Handle<v8::Value> fits::gen_pngtile(const v8::Arguments& args) {
+
+    v8::HandleScope scope;
+    fits* obj = ObjectWrap::Unwrap<fits>(args.This());
+    obj->file_name=obj->get_file_name(args);
+
+    Handle<Array> parameters = Handle<Array>::Cast(args[0]);
+    //  cout << " zoom = " << parameters->Get(0)->ToNumber()->Value() << endl;
+
+    try{
+      Handle<node::Buffer> bp = obj->gen_pngtile(parameters);
+      return scope.Close(bp->handle_);  
+    }
+  
+    catch (qk::exception& e){
+      //    MERROR << "Failed: "<<e.mess << endl;
+      v8::ThrowException(v8::String::New(e.mess.c_str()));
+    }
+    //  v8::Handle<v8::Object> result = v8::Object::New();
     return scope.Close(Undefined());
   }
 
-  Local<Object> ar = args[0]->ToObject();
   /*
-  Local<Array> props = ar->GetPropertyNames();
+    void free_stream_buffer(char* b, void*x){
+    free(b);
+    }
 
-  for(unsigned int p=0; p<props->Length();p++){
-    String::AsciiValue val(props->Get(p)->ToString());
-    cout << " pr " << p << " = " << *val << endl;
-  }
   */
-  Local<Array> cuts_array = Local<Array>::Cast(ar->Get(String::New("cuts")));
-
-  double cuts[2];
-  cuts[0]= cuts_array->Get(0)->ToNumber()->Value();
-  cuts[1]= cuts_array->Get(1)->ToNumber()->Value();
-
-  
-
-  //String::Utf8Value fits_file_path(args[0]->ToString());
-  //Handle<Object> cuts = (*args[0])["cuts"];
-  //double cut0 = args[0]["cuts"];
 
 
-  //  Handle<Object> result = Object::New();
-  Handle<String> histo_csv_data = obj->create_image_histogram(cuts);
 
-  //  cout << " HISTO OK : " << *(String::AsciiValue(histo_csv_data->ToString())) << endl;
+  v8::Handle<node::Buffer> fits::gen_pngtile( Handle<Array>& parameters) {
 
-  return scope.Close(histo_csv_data);
-}
+    //  float fits_start[2];
+    // float fits_size[2];
+    //int png_dims[2];
+    int x_tile,y_tile,zoom;
 
+    x_tile=parameters->Get(0)->ToNumber()->Value();
+    y_tile=parameters->Get(1)->ToNumber()->Value();
+    zoom=parameters->Get(2)->ToNumber()->Value();
 
-Handle<String> fits::create_image_histogram(double* cuts){
+    //  cout << "Gen tile " << x_tile << ", " << y_tile << " zoom " << zoom << endl; 
 
-  try{
-
-    string result_string;
     int img_hdu_ndims=0;
     mem<long> img_hdu_dims;
     mem<long> fpix;
     float nulv=0.0f;
-    // float value;
+    float value;
     int anynul;
-    //int longest_dim=0;
+    int longest_dim=0;
 
-    //cout << "Creating histogram ..." << endl;
+    dcube<unsigned char> png_data(256,256,4);
+    png_data.set_all(0);
+
+    float scale_factor;
     
     open_file();
-    fits_get_img_dim(f, &img_hdu_ndims, &fstat);report_fits_error();
+  
+    //  cout << "OK f="<< f << endl;
+    fits_get_img_dim(f, &img_hdu_ndims, &fstat); report_fits_error();
 
-    img_hdu_dims.redim(img_hdu_ndims);
-    
     if(img_hdu_ndims!=2){
       throw qk::exception("Unsupported number of dimensions in image, aborting.");
     }
-    
+
+  
+    //cout << "OK" << endl;
+  
+    img_hdu_dims.redim(img_hdu_ndims);
     fpix.redim(img_hdu_ndims);
-    for(int d=0;d<img_hdu_ndims;d++) fpix[d]=1;
-
-    //cout << "ndims="<< img_hdu_ndims  << endl;
-    
+  
     fits_get_img_size(f, img_hdu_ndims, img_hdu_dims.c, &fstat);report_fits_error();
-
-    mat<float> imgdata(img_hdu_dims[0],img_hdu_dims[1]);
-
-    //cout << "read image : " << img_hdu_dims[0] << ", " << img_hdu_dims[1] << endl;
-    
-    fits_read_pix(f, TFLOAT, fpix.c, imgdata.dim ,&nulv,imgdata.c, &anynul, &fstat);report_fits_error();
-    
+  
     //cout << "OK" << endl;
 
-    int nbins=200;
+    for(int d=0;d<img_hdu_ndims;d++) fpix[d]=1;
+  
+    if(img_hdu_dims[1]>img_hdu_dims[0]) longest_dim=1;
 
-    float low= (int) cuts[0];
-    float max= (int) cuts[1];
-    
-    if(low==-1||max==-1){
-      low=imgdata.min();
-      max=imgdata.max();
-    }
-    
-    //cout << "OK2" << endl;
+    //cout << "OK" << endl;  
+    //longest_dim=0;
+  
+    scale_factor=img_hdu_dims[longest_dim]*1.0/png_data.dims[longest_dim];
+    for(int z=0;z<zoom;z++) scale_factor/=2.0;
+  
+    //  cout << "Fits data :  " << img_hdu_dims.dim << " dimensions : ";
+    // for(int d=0;d<img_hdu_dims.dim;d++) cout << img_hdu_dims[d] << ", ";
+    // cout << endl;
 
-    float bsize=(max-low)/nbins;
-    
-    if(bsize<1){
-      bsize=1.0;
-      nbins=max-low;
-    }
-    
-    vec<unsigned int> histo(nbins);
-    histo.set_all(0);
-    
-    for(int d=0;d<imgdata.dim;d++) 
-      if(imgdata[d]>=low&&imgdata[d]<max){
-	int bid=(int)( (imgdata[d]-low)/bsize);
-	if(bid>=0&&bid<histo.dim)
-	  histo[bid]++; 
+  
+    vec<float> tmpcol(4);
+  
+    for(int y=0;y<png_data.dims[1];y++)
+      for(int x=0;x<png_data.dims[0];x++){
+      
+	fpix[0]=(x_tile*png_data.dims[0]+x)*scale_factor+1;
+	fpix[1]=(y_tile*png_data.dims[1]+y)*scale_factor+1;
+      
+	if(fpix[0]<0 || fpix[0]>img_hdu_dims[0]
+	   || fpix[1]<0 || fpix[1]>img_hdu_dims[1]
+	   ) value=cuts[1];
+      
+	else{
+	  fits_read_pix(f, TFLOAT, fpix.c, 1,&nulv,&value, &anynul, &fstat);
+	  report_fits_error();
+	}
+      
+	//value-=cuts[0];
+      
+	//      cout << "Getting colors cmd=" << scaled_cmap.dim << endl;
+	scaled_cmap.get_color(value, tmpcol);
+      
+	// value=(value-cuts[0])/(cuts[1]-cuts[0])*255.0; 
+      
+	// if(value<0) value=0;
+	// if(value>255) value=255;
+	//cout << "Color : ";
+	for(int c=0;c<4;c++) png_data(y,x,c)=(unsigned char) (tmpcol[c]*255.0);
+      
+	// png_data(y,x,0)=(unsigned char) (value);
+	// png_data(y,x,1)=(unsigned char) (value);
+	// png_data(y,x,2)=(unsigned char) (value);
+	// png_data(y,x,3)=255;
       }
-
-    //cout << "OK3" << endl;
-    
-    result_string="pixvalue\tndata\n";
-
-    char sb[256];
-
-    for(int i=0;i<nbins;i++){
-      sprintf(sb,"%g\t%g\n",low+(i+.5)*bsize, histo[i]*1.0);
-      result_string+=sb;
-    }
-
-    close_file();
-    
-    //cout << "OK4" << endl;
-    
-    Handle<String> result = v8::String::New(result_string.c_str());
-
-    //cout << "OK5" << endl;
-    return result;
-  }
   
-  catch (qk::exception& e){
-    //cout << "Catch qk exception " << endl;
-    v8::ThrowException(v8::String::New(e.mess.c_str()));
-  }
-
-
-
-  return Handle<String>();
-}
-
-
-v8::Handle<v8::Value> fits::set_hdu(const v8::Arguments& args){
-
-  HandleScope scope;
-
-  if (args.Length() < 1) {
-    ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
-    return scope.Close(Undefined());
-  }
-
-  fits* obj = ObjectWrap::Unwrap<fits>(args.This());
-  obj->file_name=obj->get_file_name(args);
-
-  int hduid = args[0]->ToNumber()->Value();
-  cout << "setting hdu to " << hduid << endl;
-
-  //Handle<Array> cutsa = Handle<Array>::Cast(args[0]);
-  try{  
-    obj->set_current_hdu(hduid);
-    return Handle<Object>(args.This());
-  }
-
-    
-  catch (qk::exception& e){
-    v8::ThrowException(v8::String::New(e.mess.c_str()));
-    return scope.Close(Undefined());
-  }
-
-}
-
-v8::Handle<v8::Value> fits::gen_pngtile(const v8::Arguments& args) {
-
-  v8::HandleScope scope;
-  fits* obj = ObjectWrap::Unwrap<fits>(args.This());
-  obj->file_name=obj->get_file_name(args);
-
-  Handle<Array> parameters = Handle<Array>::Cast(args[0]);
-  //  cout << " zoom = " << parameters->Get(0)->ToNumber()->Value() << endl;
-
-  try{
-    Handle<node::Buffer> bp = obj->gen_pngtile(parameters);
-    return scope.Close(bp->handle_);  
-  }
+    close_file();    
   
-  catch (qk::exception& e){
-    //    MERROR << "Failed: "<<e.mess << endl;
-    v8::ThrowException(v8::String::New(e.mess.c_str()));
-  }
-  //  v8::Handle<v8::Object> result = v8::Object::New();
-  return scope.Close(Undefined());
-}
-
-  /*
-void free_stream_buffer(char* b, void*x){
-  free(b);
-}
-
-  */
-
-
-
-v8::Handle<node::Buffer> fits::gen_pngtile( Handle<Array>& parameters) {
-
-  //  float fits_start[2];
-  // float fits_size[2];
-  //int png_dims[2];
-  int x_tile,y_tile,zoom;
-
-  x_tile=parameters->Get(0)->ToNumber()->Value();
-  y_tile=parameters->Get(1)->ToNumber()->Value();
-  zoom=parameters->Get(2)->ToNumber()->Value();
-
-  //  cout << "Gen tile " << x_tile << ", " << y_tile << " zoom " << zoom << endl; 
-
-  int img_hdu_ndims=0;
-  mem<long> img_hdu_dims;
-  mem<long> fpix;
-  float nulv=0.0f;
-  float value;
-  int anynul;
-  int longest_dim=0;
-
-  dcube<unsigned char> png_data(256,256,4);
-  png_data.set_all(0);
-
-  float scale_factor;
-    
-  open_file();
+    size_t stream_size;
+    char* stream_data;
+    FILE * fst = open_memstream(&stream_data, &stream_size);
   
-  //  cout << "OK f="<< f << endl;
-  fits_get_img_dim(f, &img_hdu_ndims, &fstat); report_fits_error();
+    write_png_file(fst, png_data);
+    fclose(fst);
 
-  if(img_hdu_ndims!=2){
-    throw qk::exception("Unsupported number of dimensions in image, aborting.");
-  }
-
+    // POSSIBLE MEM LEAK ? Does v8::Buffer frees itself its mem content ?? 
   
-  //cout << "OK" << endl;
-  
-  img_hdu_dims.redim(img_hdu_ndims);
-  fpix.redim(img_hdu_ndims);
-  
-  fits_get_img_size(f, img_hdu_ndims, img_hdu_dims.c, &fstat);report_fits_error();
-  
-  //cout << "OK" << endl;
-
-  for(int d=0;d<img_hdu_ndims;d++) fpix[d]=1;
-  
-  if(img_hdu_dims[1]>img_hdu_dims[0]) longest_dim=1;
-
-  //cout << "OK" << endl;  
-  //longest_dim=0;
-  
-  scale_factor=img_hdu_dims[longest_dim]*1.0/png_data.dims[longest_dim];
-  for(int z=0;z<zoom;z++) scale_factor/=2.0;
-  
-  //  cout << "Fits data :  " << img_hdu_dims.dim << " dimensions : ";
-  // for(int d=0;d<img_hdu_dims.dim;d++) cout << img_hdu_dims[d] << ", ";
-  // cout << endl;
-
-  
-  vec<float> tmpcol(4);
-  
-  for(int y=0;y<png_data.dims[1];y++)
-    for(int x=0;x<png_data.dims[0];x++){
-      
-      fpix[0]=(x_tile*png_data.dims[0]+x)*scale_factor+1;
-      fpix[1]=(y_tile*png_data.dims[1]+y)*scale_factor+1;
-      
-      if(fpix[0]<0 || fpix[0]>img_hdu_dims[0]
-	 || fpix[1]<0 || fpix[1]>img_hdu_dims[1]
-	 ) value=cuts[1];
-      
-      else{
-	fits_read_pix(f, TFLOAT, fpix.c, 1,&nulv,&value, &anynul, &fstat);
-	report_fits_error();
-      }
-      
-      //value-=cuts[0];
-      
-      //      cout << "Getting colors cmd=" << scaled_cmap.dim << endl;
-      scaled_cmap.get_color(value, tmpcol);
-      
-      // value=(value-cuts[0])/(cuts[1]-cuts[0])*255.0; 
-      
-      // if(value<0) value=0;
-      // if(value>255) value=255;
-      //cout << "Color : ";
-      for(int c=0;c<4;c++) png_data(y,x,c)=(unsigned char) (tmpcol[c]*255.0);
-      
-      // png_data(y,x,0)=(unsigned char) (value);
-      // png_data(y,x,1)=(unsigned char) (value);
-      // png_data(y,x,2)=(unsigned char) (value);
-      // png_data(y,x,3)=255;
-    }
-  
-  close_file();    
-  
-  size_t stream_size;
-  char* stream_data;
-  FILE * fst = open_memstream(&stream_data, &stream_size);
-  
-  write_png_file(fst, png_data);
-  fclose(fst);
-
-  // POSSIBLE MEM LEAK ? Does v8::Buffer frees itself its mem content ?? 
-  
-  //  Buffer* bp =Buffer::New(stream_data, stream_size, free_stream_buffer, NULL)
-  Buffer* bp =Buffer::New(stream_data, stream_size, free_stream_buffer, NULL);
-  Handle<Buffer> hbp(bp);
+    //  Buffer* bp =Buffer::New(stream_data, stream_size, free_stream_buffer, NULL)
+    Buffer* bp =Buffer::New(stream_data, stream_size, free_stream_buffer, NULL);
+    Handle<Buffer> hbp(bp);
 
     //  Handle<Buffer> bp = Buffer::New(stream_size);
     //memcpy(bp->data(), stream_data, stream_size);
   
     //  free(stream_data);
-  return hbp;
-}
+    return hbp;
+  }
 
 
   Handle<Value> fits::get_table_column(const v8::Arguments& args){
