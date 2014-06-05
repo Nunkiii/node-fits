@@ -43,7 +43,7 @@ namespace qk{
 
     ///Copy constructor.
 
-    mat (const mat & m){
+    mat (const mat & m):vec<T>(){
       operator = (m);
     }   
 
@@ -82,6 +82,7 @@ namespace qk{
     ///\param _ms : The matrix to copy data from. 
 
     const mat<T> & operator = (const mat<T> & ms){
+      cout << "OP EQUAL!"<<endl;
       if (this != &ms){
 	dims[0] = ms.dims[0];
 	dims[1] = ms.dims[1];      
@@ -753,7 +754,6 @@ namespace qk{
 
     }
 
-
     ///Extracts a _size sub-matrix from the source matrix _source.
     ///\param _source : The matrix to extract data from.
     ///\param _size : The rectangular area to extract. 
@@ -768,6 +768,16 @@ namespace qk{
     inline bool is_in(int _y, int _x) const{
       if(_y<0||_y>=dims[1] || _x<0||_x>=dims[0])
 	return false;
+      return true;
+    }
+    
+    ///Returns true if rectangle is included in image frame.
+    
+    template <typename IT>
+    inline bool is_in(rect<IT>& r) const{
+      for(int i=0;i<2;i++)
+	if(r[i]<0 || r[i+2]<=0 || r[i+2]+r[i]>dims[i])
+	  return false;
       return true;
     }
     
