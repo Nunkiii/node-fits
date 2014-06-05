@@ -115,7 +115,7 @@ namespace qk{
     ///Constructor.
     olst():dim(0),G (NULL), D (NULL){}
     ///Copy constructor.
-    olst(olst & _p) { operator=(_p); }
+    olst(olst & _p) { this->operator=(_p); }
     ///Destructor.
     virtual ~olst(){
       tt();
