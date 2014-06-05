@@ -7,7 +7,6 @@
 #include <qk/mat.hh>
 #include <qk/pngwriter.hh>
 #include <qk/dcube.hh>
-
 #include <colormap/colormap_interface.hh>
 
 #ifdef __APPLE__
@@ -46,10 +45,14 @@ namespace sadira{
       s_ctm->SetClassName(String::NewSymbol(class_name));
       
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "gen_histogram", gen_histogram);
+      NODE_SET_PROTOTYPE_METHOD(s_ctm, "get_data", get_data);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "gen_pngtile",gen_pngtile);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "width",width);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "height",height);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "resize",resize);
+      NODE_SET_PROTOTYPE_METHOD(s_ctm, "crop",crop);
+      NODE_SET_PROTOTYPE_METHOD(s_ctm, "copy",copy);
+      NODE_SET_PROTOTYPE_METHOD(s_ctm, "extend",extend);
       
       target->Set(String::NewSymbol(class_name), s_ctm->GetFunction());
       constructor = Persistent<Function>::New(tpl->GetFunction());
@@ -64,9 +67,7 @@ namespace sadira{
       :mat<T>(_d0,_d1){
       //cout << "New matrix "<< this <<" D="<<dims[0]<<"," << dims[1] << " D="<< dim << " datap="<< ((void*)data_pointer()) << endl;
     }    
-    jsmat (const mat<T> & m){
-      operator = (m);
-    }   
+    jsmat (const jsmat<T> & m):mat<T>(m){}   
     
     virtual ~jsmat(){}
 
@@ -77,7 +78,7 @@ namespace sadira{
     using mat<T>::operator=;
     
 
-    const jsmat<T>& operator=(const mat<T>& m){
+    const jsmat<T>& operator=(const jsmat<T>& m){
       mat<T>::operator=(m);
       return *this;
     }
@@ -155,11 +156,123 @@ namespace sadira{
       v8::HandleScope scope;
       jsmat<T>* obj = NULL;
       obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
+
       Handle<Value> w=Number::New(obj->dims[1]);
       return scope.Close(w);
     }
 
-    
+
+    static v8::Handle<v8::Value> copy(const v8::Arguments& args) {
+      v8::HandleScope scope;
+      return scope.Close(Undefined());
+    }
+
+    static v8::Handle<v8::Value> crop(const v8::Arguments& args) {
+      v8::HandleScope scope;
+      jsmat<T>* obj = NULL;
+      obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
+
+      if (args.Length() < 1) {
+	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
+	return scope.Close(Undefined());
+      }
+      Local<Object> params = Local<Object>::Cast(args[0]->ToObject()); //->Get(String::New("cuts")));
+
+      Handle<Value> hv; 
+      rect<int> r(0,0,-1,-1);
+      
+      hv=params->Get(String::NewSymbol("x")); if(hv != Undefined()) r[0]=hv->ToNumber()->Value();
+      hv=params->Get(String::NewSymbol("y")); if(hv != Undefined()) r[1]=hv->ToNumber()->Value();
+      hv=params->Get(String::NewSymbol("w")); if(hv != Undefined()) r[2]=hv->ToNumber()->Value();else r[2]=obj->dims[0]-r[0];
+      hv=params->Get(String::NewSymbol("h")); if(hv != Undefined()) r[3]=hv->ToNumber()->Value();else r[3]=obj->dims[1]-r[1];
+
+
+
+      cout << "rect is " << r[0] << ", "<< r[1] << ", "<< r[2] << ", "<< r[3] << endl;
+      
+      if(obj->is_in(r)){
+	//v8::String::Utf8Value fffu(hv->ToString());
+	cout << "OK rect is inside !"<< endl;
+	if(r[2]==obj->dims[0]&&r[3]==obj->dims[1])
+	  return scope.Close(args.This());
+
+	jsmat<T>* cropped=new jsmat<T>(*obj);
+	obj->redim(r[2],r[3]);
+	for(int j=0;j<r[3];j++)
+	  for(int i=0;i<r[2];i++)
+	    (*obj)(j,i)=(*cropped)(j+r[1],i+r[0]);
+	delete cropped;
+
+	  //cropped->extract_from(*obj,r.c);
+	  //*obj=*cropped;
+	
+	
+      }else{
+	ThrowException(Exception::TypeError(String::New("Invalid area for cropping")));
+	return scope.Close(Undefined());
+      }
+
+
+
+      //
+      
+      return scope.Close(args.This());
+    }
+
+
+    static v8::Handle<v8::Value> extend(const v8::Arguments& args) {
+
+      cout << "Extend !" << endl;
+      v8::HandleScope scope;
+      jsmat<T>* obj = NULL;
+      cout << "Extend !" << endl;
+      obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
+
+      if (args.Length() < 1) {
+	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
+	return scope.Close(Undefined());
+      }
+      cout << "Extend !" << endl;
+      Local<Object> params = Local<Object>::Cast(args[0]->ToObject()); //->Get(String::New("cuts")));
+
+      Handle<Value> hv; 
+      rect<int> r(0,0,-1,-1);
+      
+      hv=params->Get(String::NewSymbol("x")); if(hv != Undefined()) r[0]=hv->ToNumber()->Value();
+      hv=params->Get(String::NewSymbol("y")); if(hv != Undefined()) r[1]=hv->ToNumber()->Value();
+      hv=params->Get(String::NewSymbol("w")); if(hv != Undefined()) r[2]=hv->ToNumber()->Value();else r[2]=obj->dims[0]-r[0];
+      hv=params->Get(String::NewSymbol("h")); if(hv != Undefined()) r[3]=hv->ToNumber()->Value();else r[3]=obj->dims[1]-r[1];
+
+      cout << "rect is " << r[0] << ", "<< r[1] << ", "<< r[2] << ", "<< r[3] << endl;
+
+      if(r[2]<=obj->dims[0] || r[3]<=obj->dims[1] ){
+	ThrowException(Exception::TypeError(String::New("Invalid area for cropping")));
+	return scope.Close(Undefined());
+      }
+      
+      jsmat<T>* cropped=new jsmat<T>(*obj);
+      obj->redim(r[2],r[3]);
+      obj->set_all(0);
+      int cd[2]={cropped->dims[0],cropped->dims[1]};
+      int sp[2]={(int)((r[2]-cd[0])*.5),(int)((r[3]-cd[1])*.5)};
+      for(int j=0;j<cd[1];j++)
+	for(int i=0;i<cd[0];i++)
+	  (*obj)(j+sp[1],i+sp[0])=(*cropped)(j+r[1],i+r[0]);
+      delete cropped;
+      
+      //cropped->extract_from(*obj,r.c);
+	  //*obj=*cropped;
+	
+
+      
+
+
+      //
+      
+      return scope.Close(args.This());
+    }
+
+
     static v8::Handle<v8::Value> gen_pngtile(const v8::Arguments& args) {
 
       v8::HandleScope scope;
@@ -295,6 +408,100 @@ namespace sadira{
       return hbp;
     }
 
+    static Handle<Value> get_data(const Arguments& args) {
+
+      if (args.Length() > 1) {
+	//	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
+	//	return scope.Close(Undefined());
+      }
+      
+      jsmat<T>* obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
+      //cout << "gen histo for " << obj->file_name << endl;
+      
+      HandleScope scope;
+      //      Handle<String> result = v8::String::New("Hello");
+      //Handle<node::ArrayBuffer> result = node::ArrayBuffer::New(15);
+
+      /*
+      node::Buffer *slowBuffer = node::Buffer::New(512*512*4);
+      
+      // Buffer:Data gives us a yummy void* pointer to play with to our hearts
+      // content.
+      
+      for(int i=0;i<512;i++){
+      for(int j=0;j<512;j++){
+	float v=(float) (*obj)(i,j);
+	float* b=(float*)node::Buffer::Data(slowBuffer);
+	memcpy(b+i*512+j, &v, 4);
+      }
+      }
+      */
+
+      node::Buffer *slowBuffer = node::Buffer::New(obj->dim*4);
+      
+      // Buffer:Data gives us a yummy void* pointer to play with to our hearts
+      // content.
+      
+      for(int i=0;i<obj->dim;i++){
+	float v=(float) obj->c[i];
+	float* b=(float*)node::Buffer::Data(slowBuffer);
+	memcpy(b+i, &v, 4);
+      }
+
+      
+      
+      
+      // Now we need to create the JS version of the Buffer I was telling you about.
+      // To do that we need to actually pull it from the execution context.
+      // First step is to get a handle to the global object.
+      v8::Local<v8::Object> globalObj = v8::Context::GetCurrent()->Global();
+
+      // Now we need to grab the Buffer constructor function.
+      v8::Local<v8::Function> bufferConstructor = v8::Local<v8::Function>::Cast(globalObj->Get(v8::String::New("Buffer")));
+
+      // Great. We can use this constructor function to allocate new Buffers.
+      // Let's do that now. First we need to provide the correct arguments.
+      // First argument is the JS object Handle for the SlowBuffer.
+      // Second arg is the length of the SlowBuffer.
+      // Third arg is the offset in the SlowBuffer we want the .. "Fast"Buffer to start at.
+      v8::Handle<v8::Value> constructorArgs[3] = { slowBuffer->handle_, v8::Integer::New(obj->dim*4), v8::Integer::New(0) };
+
+      // Now we have our constructor, and our constructor args. Let's create the 
+      // damn Buffer already!
+      v8::Local<v8::Object> actualBuffer = bufferConstructor->NewInstance(3, constructorArgs);
+
+      // This Buffer can now be provided to the calling JS code as easy as this:
+      return scope.Close(actualBuffer);
+
+
+      static Persistent<Function> uint16_array_constructor;
+
+      if (uint16_array_constructor.IsEmpty()) {
+	Local<Object> global = Context::GetCurrent()->Global();
+	Local<Value> val = global->Get(String::New("Float32Array"));
+	assert(!val.IsEmpty() && "type not found: Float32Array");
+	assert(val->IsFunction() && "not a constructor: Float32Array");
+	uint16_array_constructor = Persistent<Function>::New(val.As<Function>());
+      }
+
+      Local<Value> size = Integer::NewFromUnsigned(obj->dim);
+      Local<Object> array = uint16_array_constructor->NewInstance(1, &size);
+
+
+      if (array->GetIndexedPropertiesExternalArrayDataType() != kExternalFloatArray){
+	ThrowException(Exception::TypeError(String::New("ExternalArrayDataType() != kExternalFloatArray")));
+	return scope.Close(Undefined());
+      }
+      
+      //int len = array->GetIndexedPropertiesExternalArrayDataLength();
+      
+      float* data = static_cast<float*>(array->GetIndexedPropertiesExternalArrayData());
+      
+      printf("first bytes : %d %d\n", (int) ( ((char*)obj->c)[0]), (int) ( ((char*)obj->c)[1]));
+      for(int i=0;i<obj->dim;i++) data[i]=obj->c[i];
+      
+      return scope.Close(array);
+    }
     
     static Handle<Value> gen_histogram(const Arguments& args) {
       
