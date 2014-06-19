@@ -53,6 +53,8 @@ namespace sadira{
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "crop",crop);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "copy",copy);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "extend",extend);
+      NODE_SET_PROTOTYPE_METHOD(s_ctm, "swapx",swapx);
+      NODE_SET_PROTOTYPE_METHOD(s_ctm, "swapy",swapy);
       
       target->Set(String::NewSymbol(class_name), s_ctm->GetFunction());
       constructor = Persistent<Function>::New(tpl->GetFunction());
@@ -260,15 +262,6 @@ namespace sadira{
 	  (*obj)(j+sp[1],i+sp[0])=(*cropped)(j+r[1],i+r[0]);
       delete cropped;
       
-      //cropped->extract_from(*obj,r.c);
-	  //*obj=*cropped;
-	
-
-      
-
-
-      //
-      
       return scope.Close(args.This());
     }
 
@@ -406,6 +399,32 @@ namespace sadira{
       //memcpy(bp->data(), stream_data, stream_size);
       //  free(stream_data);
       return hbp;
+    }
+
+    static Handle<Value> swapx(const Arguments& args) {
+      jsmat<T>* obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
+      HandleScope scope;
+      mat<T> tmp(*obj);
+      int* dims=obj->dims;
+      for(int j=0;j<dims[1];j++){
+	for(int i=0;i<dims[0];i++){
+	  (*obj)(j,i)=tmp(j,dims[0]-i-1);
+	}
+      }
+      return scope.Close(args.This());
+    }
+
+    static Handle<Value> swapy(const Arguments& args) {
+      jsmat<T>* obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
+      HandleScope scope;
+      mat<T> tmp(*obj);
+      int* dims=obj->dims;
+      for(int j=0;j<dims[1];j++){
+	for(int i=0;i<dims[0];i++){
+	  (*obj)(j,i)=tmp(dims[1]-j-1,i);
+	}
+      }
+      return scope.Close(args.This());
     }
 
     static Handle<Value> get_data(const Arguments& args) {
