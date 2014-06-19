@@ -32,6 +32,7 @@ namespace sadira{
     void open_file(int mode=0);
     void close_file();
     Handle<Object> get_headers();
+    Handle<Object> get_headers_array();
 
     void write_key_str(const string& _keyword, const string& _key_val, const string& _comment);
     void read_key_str(const string& _key_name,string& _key_val);
@@ -51,6 +52,7 @@ namespace sadira{
     static Handle<Value> New(const Arguments& args);
     static Handle<Value> set_file(const Arguments& args);
     static Handle<Value> get_headers(const Arguments& args);
+    static Handle<Value> get_headers_array(const Arguments& args);
     static Handle<Value> gen_pngtile(const Arguments& args);
 
 
