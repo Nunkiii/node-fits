@@ -21,10 +21,7 @@ In the node-fits directory, the following commands will build the module:
 The test.js file, in the node-fits/test directory, loads an example FITS image file (a galaxy), then creates two PNG snapshots of the image using a custom colormap and pixels intensity cut values. 
 
     $node test.js
-    
-### API insight
 
-Documentation still need to be written for the various functions the node-fits module provides. In the mean time, the following example can give an idea on how to use it.
 
     File test.js
 
