@@ -3,7 +3,7 @@ A set of (experimental) tools to access FITS files from Node.
 
 ### To build:
 
-The node-fits module compiles on gnu/linux with g++. node-gyp is used as building tool. Other platforms have not been tested yet.
+The `node-fits` module has been successfully compiled and tested on gnu/linux and on MaxOS. node-gyp is used as the building tool. Other platforms have not been tested yet.
 
 You will need to install the development versions of libpng and libcfitsio (called libpng12-dev and libcfitsio3-dev on debian systems). 
 
