@@ -31,7 +31,6 @@ namespace sadira{
     
     void open_file(int mode=0);
     void close_file();
-    Handle<Object> get_headers();
     Handle<Object> get_headers_array();
 
     void write_key_str(const string& _keyword, const string& _key_val, const string& _comment);

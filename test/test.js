@@ -6,10 +6,22 @@
 
 
 var fits=require("../build/Release/fits");
-
 var f = new fits.file();
 
-f.file_name="example.fits";
+//f.file_name="example.fits";
+f.file_name=process.argv[2];
+
+
+f.get_headers(function(error, headers){
+  
+  if(error){
+    console.log("Bad things happened : " + error);
+    return;
+  }
+
+  console.log("FITS Headers : " + JSON.stringify(headers,null,5));
+  
+});
 
 f.read_image_hdu(function(error, image){
     
@@ -35,6 +47,9 @@ f.read_image_hdu(function(error, image){
 	out.write(image.gen_pngtile([0,0,0], [512,512]));
 	out.end();
 
+    console.log("End of fits callback!");
     }
 
 });
+
+console.log("End of script!");

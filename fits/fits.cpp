@@ -6,10 +6,12 @@
 
 #ifdef __APPLE__
 #ifdef __cplusplus
+
 extern "C" {
   FILE * open_memstream (char **buf, size_t *len);
   FILE *fmemopen(void *buf, size_t size, const char *mode);
 }
+
 #endif
 #endif
 
@@ -244,61 +246,6 @@ namespace sadira{
   }
 
 
-  v8::Handle<v8::Object> fits::get_headers(){
-    
-    //  v8::Handle<v8::Object> result = v8::Object::New();
-    v8::Local<v8::Array> hdus = v8::Array::New();
-    
-
-    int hdupos, nkeys, nhdu, ii,ih, hdutype;
-
-    char kname[FLEN_KEYWORD];
-    char kvalue[FLEN_VALUE];
-    char kcomment[FLEN_COMMENT];
-  
-    open_file();
-  
-    fits_get_num_hdus(f, &nhdu,&fstat); report_fits_error();  /* Get the current HDU position */
-    fits_get_hdu_num(f, &hdupos);  /* Get the current HDU position */
-    fits_get_hdrspace(f, &nkeys, NULL, &fstat); /* get # of keywords */
-  
-    for (ih = 1; ih <= nhdu; ih++) { /* Read and print each hdu */
-
-      fits_movabs_hdu(f,ih,&hdutype,&fstat); report_fits_error();
-
-      v8::Handle<v8::Object> hdu = v8::Object::New();
-      v8::Local<v8::Array> fits_keys = v8::Array::New();
-
-      hdus->Set(v8::Number::New(ih-1), hdu);
-    
-      for (ii = 1; ii <= nkeys; ii++) { /* Read and print each keywords */
-	fits_read_keyn(f, ii, kname, kvalue, kcomment, &fstat); report_fits_error();
-      
-	//v8::Handle<v8::Object> key = v8::Object::New();
-	v8::Local<v8::Array> key = v8::Array::New();
-
-	key->Set(v8::Number::New(0),String::New( kname));
-	key->Set(v8::Number::New(1),String::New( kvalue));
-	key->Set(v8::Number::New(2),String::New( kcomment));
-      
-	fits_keys->Set(v8::Number::New(ii-1), key);
-      }
-
-      string type_name="bug";
-      if(hdutype==IMAGE_HDU) type_name="image";
-      else if(hdutype==ASCII_TBL) type_name="ascii_table";
-      else if(hdutype==BINARY_TBL) type_name="binary_table";
-
-      hdu->Set(String::New("type"),String::New(type_name.c_str()));  
-      hdu->Set(String::New("keywords"),fits_keys);
-
-    }
-  
-    close_file();
-    return hdus;
-  }
-
-
   v8::Handle<v8::Object> fits::get_headers_array(){
   
     //  v8::Handle<v8::Object> result = v8::Object::New();
@@ -357,26 +304,91 @@ namespace sadira{
 
     HandleScope scope;
 
-
+    if (args.Length() < 1) {
+      return ThrowException(Exception::Error(String::New("You need to provide a callback function(error, headers)")));
+    }
+    
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
     obj->file_name=obj->get_file_name(args);
 
-    return scope.Close(obj->get_headers());
+    v8::Local<v8::Function> cb=Local<Function>::Cast(args[0]);
+    //  v8::Handle<v8::Object> result = v8::Object::New();
+    v8::Local<v8::Array> hdus = v8::Array::New();
+    
 
+    int hdupos, nkeys, nhdu, ii,ih, hdutype;
+
+    char kname[FLEN_KEYWORD];
+    char kvalue[FLEN_VALUE];
+    char kcomment[FLEN_COMMENT];
+
+    try{
+
+      obj->open_file();
+      
+      fits_get_num_hdus(obj->f, &nhdu,&obj->fstat); obj->report_fits_error();  /* Get the current HDU position */
+      fits_get_hdu_num(obj->f, &hdupos);  /* Get the current HDU position */
+      fits_get_hdrspace(obj->f, &nkeys, NULL, &obj->fstat); /* get # of keywords */
+      
+      for (ih = 1; ih <= nhdu; ih++) { /* Read and print each hdu */
+	
+	fits_movabs_hdu(obj->f,ih,&hdutype,&obj->fstat); obj->report_fits_error();
+	
+	v8::Handle<v8::Object> hdu = v8::Object::New();
+	v8::Local<v8::Array> fits_keys = v8::Array::New();
+	
+	hdus->Set(v8::Number::New(ih-1), hdu);
+	
+	for (ii = 1; ii <= nkeys; ii++) { /* Read and print each keywords */
+	  fits_read_keyn(obj->f, ii, kname, kvalue, kcomment, &obj->fstat); obj->report_fits_error();
+	  
+	  //v8::Handle<v8::Object> key = v8::Object::New();
+	  v8::Local<v8::Array> key = v8::Array::New();
+	  
+	  key->Set(v8::Number::New(0),String::New( kname));
+	  key->Set(v8::Number::New(1),String::New( kvalue));
+	  key->Set(v8::Number::New(2),String::New( kcomment));
+	  
+	  fits_keys->Set(v8::Number::New(ii-1), key);
+	}
+	
+	string type_name="bug";
+	if(hdutype==IMAGE_HDU) type_name="image";
+	else if(hdutype==ASCII_TBL) type_name="ascii_table";
+	else if(hdutype==BINARY_TBL) type_name="binary_table";
+
+	hdu->Set(String::New("type"),String::New(type_name.c_str()));  
+	hdu->Set(String::New("keywords"),fits_keys);
+	
+      }
+      
+      obj->close_file();
+
+      const unsigned argc = 2;
+      Handle<Value> argv[argc] = { Undefined(), hdus };
+      cb->Call(Context::GetCurrent()->Global(), argc, argv );    
+
+    }
+
+    catch (qk::exception &e){
+
+      const unsigned argc = 2;
+
+      Handle<Value> argv[argc] = { String::New(e.mess.c_str()), Undefined() };
+      cb->Call(Context::GetCurrent()->Global(), argc, argv );    
+    }
+
+    return scope.Close(args.This());
 
   }
 
   Handle<Value> fits::get_headers_array(const Arguments& args) {
 
     HandleScope scope;
-
-
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
     obj->file_name=obj->get_file_name(args);
 
-    return scope.Close(obj->get_headers());
-
-
+    return scope.Close(obj->get_headers_array());
   }
 
 
@@ -837,7 +849,6 @@ namespace sadira{
       return ThrowException(Exception::Error(String::New("You need to provide a callback function(error, image)")));
     }
     
-    cout << "Hello"<<endl;
     v8::HandleScope scope;
 
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
