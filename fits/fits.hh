@@ -26,10 +26,12 @@ namespace sadira{
     
   private:
     
+    static v8::Persistent<v8::Function> constructor;
+    
     fits();
     ~fits();
     
-    void open_file(int mode=0);
+    void open_file(const char* file_name, int mode=0);
     void close_file();
     Handle<Object> get_headers_array();
 
@@ -46,13 +48,15 @@ namespace sadira{
 
     void check_file_is_open();
 
-    Handle<node::Buffer> gen_pngtile(Handle<Array>& parameters);
+    //    Handle<node::Buffer> gen_pngtile(Handle<Array>& parameters);
     
     static Handle<Value> New(const Arguments& args);
+    static Handle<Value> open(const Arguments& args);
+
     static Handle<Value> set_file(const Arguments& args);
     static Handle<Value> get_headers(const Arguments& args);
     static Handle<Value> get_headers_array(const Arguments& args);
-    static Handle<Value> gen_pngtile(const Arguments& args);
+    //    static Handle<Value> gen_pngtile(const Arguments& args);
 
 
     static Handle<Value> write_image_hdu(const v8::Arguments& args);
@@ -68,8 +72,9 @@ namespace sadira{
     Handle<Object> get_table_columns(int hdu_id);
     
     void report_fits_error();
-    Handle<String> create_image_histogram(double* cuts);
-    static Handle<Value> gen_histogram(const Arguments& args);
+
+    //    Handle<String> create_image_histogram(double* cuts);
+    //    static Handle<Value> gen_histogram(const Arguments& args);
 
     double counter_;
 
@@ -217,7 +222,7 @@ namespace sadira{
       return Handle<Value>(Undefined());
     }
 
-    std::string file_name;
+    //std::string file_name;
     char fitsio_error_buffer[1024];
     FILE* ffitsio_error;
     int fstat;
@@ -226,7 +231,6 @@ namespace sadira{
     fitsfile* f;
   };
   
-  //Persistent<FunctionTemplate> fits::s_ctf;
   
 }
 
