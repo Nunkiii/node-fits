@@ -529,38 +529,48 @@ namespace sadira{
       
       HandleScope scope;
       
-      if (args.Length() < 1) {
+      if (args.Length() < 2) {
 	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
 	return scope.Close(Undefined());
       }
       
       Local<Object> ar = args[0]->ToObject();
+      Local<Function> result_cb=Local<Function>::Cast(args[1]);
+
+
       Local<Array> cuts_array = Local<Array>::Cast(ar->Get(String::New("cuts")));
+      Local<Value> nbins_value = Local<Value>::Cast(ar->Get(String::New("nbins")));
       
       double cuts[2];
+      int nbins=nbins_value->ToNumber()->Value();
+
       cuts[0]= cuts_array->Get(0)->ToNumber()->Value();
       cuts[1]= cuts_array->Get(1)->ToNumber()->Value();
       
+      args[0]->ToNumber()->Value();
+
+ 
       Handle<String> histo_csv_data = obj->create_image_histogram(cuts);
       //  cout << " HISTO OK : " << *(String::AsciiValue(histo_csv_data->ToString())) << endl;
+      
+      const unsigned argc = 2;
+      Handle<Value> argv[argc] = { Undefined(), hdus };
+      result_cb->Call(Context::GetCurrent()->Global(), argc, argv );    
+
       
       return scope.Close(histo_csv_data);
     }
 
 
-    Handle<String> create_image_histogram(double* cuts){
+    Handle<String> create_image_histogram(double* cuts, int nbins){
       
       try{
 	
 	string result_string;
-	//int fpix[2];
-
-	//mat<float> imgdata(dims[0],dims[1]);
-	//for(int i=0;i<dim;i++)imgdata[i]=(float)c[i];
 
 	jsmat<T>& imgdata=*this;
 
-	int nbins=200;
+	//int nbins=200;
 	
 	float low= (int) cuts[0];
 	float max= (int) cuts[1];
