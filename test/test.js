@@ -6,11 +6,17 @@
 
 
 var fits=require("../build/Release/fits");
-var f = new fits.file();
+var f = new fits.file(process.argv[2]);
+
+
+console.log("File is " + f.file_name);
 
 //f.file_name="example.fits";
-f.file_name=process.argv[2];
+//f.file_name=process.argv[2];
 
+//f.open();
+
+/*
 
 f.get_headers(function(error, headers){
   
@@ -23,12 +29,18 @@ f.get_headers(function(error, headers){
   
 });
 
+
+*/
+
+
 f.read_image_hdu(function(error, image){
     
-    if(error) console.log("Bad things happened : " + error);
+    if(error){
+	console.log("Bad things happened while reading image hdu : " + error);
+	return;
+    }
     
     if(image){
-
 	//var headers=f.get_headers(); console.log("FITS headers : \n" + JSON.stringify(headers, null, 4));
 	
 	var colormap=[ [0,0,0,1,0], [1,0,1,1,.8], [1,.2,.2,1,.9], [1,1,1,1,1] ];
@@ -40,16 +52,33 @@ f.read_image_hdu(function(error, image){
 	var fs=require("fs"),out;
 
 	out = fs.createWriteStream("small.png");
-	out.write(image.gen_pngtile([0,0,0], [64,64]));
+	out.write(image.tile( { tile_coord :  [2,3], zoom :  10, tile_size : [64,64], type : "png" }));
 	out.end();
 
-	out = fs.createWriteStream("big.png");
-	out.write(image.gen_pngtile([0,0,0], [512,512]));
+	out = fs.createWriteStream("big.jpeg");
+	out.write(image.tile( { tile_coord :  [0,0], zoom :  0, tile_size : [512,512], type : "jpeg" }));
 	out.end();
-
-    console.log("End of fits callback!");
+	
+//	image.histogram({ nbins: 350, cuts : [23,65] }, function(error, histo){
+	image.histogram({}, function(error, histo){ //By default cuts are set to min,max and nbins to 200
+	    
+	    if(error)
+		console.log("Histo error : " + error);
+	    else{
+		
+		console.log("HISTO : " + JSON.stringify(histo));
+		
+	    }
+	});
+	
+	
+	console.log("End of fits callback!");
+	delete f;
     }
 
 });
+
+
+
 
 console.log("End of script!");
