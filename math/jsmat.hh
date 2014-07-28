@@ -6,6 +6,7 @@
 
 #include <qk/mat.hh>
 #include <qk/pngwriter.hh>
+#include <qk/jpeg_writer.hh>
 #include <qk/dcube.hh>
 #include <colormap/colormap_interface.hh>
 
@@ -30,10 +31,10 @@ namespace sadira{
   template <typename T> class jsmat 
     : public colormap_interface, public mat<T> {
   public:
-
+    
     static Persistent<FunctionTemplate> s_ctm;    
     static Persistent<Function> constructor;
-
+    
     static void init(Handle<Object> target, const char* class_name){
       Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
       
@@ -44,9 +45,9 @@ namespace sadira{
       s_ctm->InstanceTemplate()->SetInternalFieldCount(1);
       s_ctm->SetClassName(String::NewSymbol(class_name));
       
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "gen_histogram", gen_histogram);
+      NODE_SET_PROTOTYPE_METHOD(s_ctm, "histogram", gen_histogram);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "get_data", get_data);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "gen_pngtile",gen_pngtile);
+      NODE_SET_PROTOTYPE_METHOD(s_ctm, "tile",gen_tile);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "width",width);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "height",height);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "resize",resize);
@@ -265,35 +266,142 @@ namespace sadira{
       return scope.Close(args.This());
     }
 
-
-    static v8::Handle<v8::Value> gen_pngtile(const v8::Arguments& args) {
+    static v8::Handle<v8::Value> gen_tile(const v8::Arguments& args) {
 
       v8::HandleScope scope;
-    
+
       if (args.Length() < 1) {
 	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
 	return scope.Close(Undefined());
       }
+      
+      // if (!args[1]->IsFunction()) {
+      //   return ThrowException(Exception::TypeError(String::New("Second argument must be a callback function")));
+      // }
 
+      // Handle<Function> result_cb=Handle<Function>::Cast(args[1]);
       jsmat<T>* obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
       
       Handle<Array> parameters = Handle<Array>::Cast(args[0]);
-      Handle<Array> tile_size;
 
-      if (args.Length() >= 1) {
-	tile_size = Handle<Array>::Cast(args[1]);
+      Handle<Array> tile_coord = Handle<Array>::Cast(parameters->Get(String::New("tile_coord")));
+      Handle<Array> tile_size = Handle<Array>::Cast(parameters->Get(String::New("tile_size")));
+      Handle<Integer> zoom_par = Handle<Integer>::Cast(parameters->Get(String::New("zoom")));
+      Handle<String> type_par= Handle<String>::Cast(parameters->Get(String::New("type")));
+
+      int x_tile,y_tile,zoom, ts[2];
+
+      if(tile_coord->IsUndefined()) {
+	x_tile=0;
+	y_tile=0;
       }else{
-
-	tile_size=Array::New();
-	
-	tile_size->Set(0,Number::New(256));
-	tile_size->Set(1,Number::New(256));
+	x_tile= Handle<Integer>::Cast(tile_coord->Get(0))->Value();
+	y_tile= Handle<Integer>::Cast(tile_coord->Get(1))->Value();
       }
-      //  cout << " zoom = " << parameters->Get(0)->ToNumber()->Value() << endl;
+
+      if(tile_size->IsUndefined()) {
+	ts[0]=ts[1]=256;
+      }else{
+	ts[0]=Handle<Integer>::Cast(tile_size->Get(0))->Value();
+	ts[1]=Handle<Integer>::Cast(tile_size->Get(1))->Value();
+      }
+      
+      if(zoom_par->IsUndefined()) {
+	zoom=0;
+      }else
+	zoom=Handle<Integer>::Cast(zoom_par)->Value();
+
+      string type ="jpeg";
+      if(! type_par->IsUndefined()){
+      	v8::String::Utf8Value s(type_par->ToString());
+	type=*s;
+      }
+
+      MINFO << "Building tile sz " << ts[0] << ", " << ts[1] << " coord " << x_tile << ", " << y_tile << " z= " << zoom << " type " << type << endl;
+
+      //return scope.Close(args.This());
       
       try{
-	Handle<node::Buffer> bp = obj->gen_pngtile(parameters, tile_size);
-	return scope.Close(bp->handle_);  
+	//Handle<node::Buffer> bp = obj->gen_pngtile(parameters, tile_size);
+	int depth= (type == "png" ) ? 4 : 3;
+	int* dims=obj->dims;
+
+	dcube<unsigned char> png_data(ts[0],ts[1],depth);
+	png_data.set_all(0);
+	
+	float scale_factor;
+	
+	//int* dims=last_image.dims;
+	
+	int longest_dim=0;
+	if(dims[1]>dims[0]) longest_dim=1;
+	
+	//cout << "OK" << endl;  
+	//longest_dim=0;
+	
+	scale_factor=dims[longest_dim]*1.0/png_data.dims[longest_dim];
+	for(int z=0;z<zoom;z++) scale_factor/=2.0;
+	
+	//  cout << "Fits data :  " << img_hdu_dims.dim << " dimensions : ";
+	// for(int d=0;d<img_hdu_dims.dim;d++) cout << img_hdu_dims[d] << ", ";
+	// cout << endl;
+	
+	
+	vec<float> tmpcol(4);
+	int fpix[2];
+	float value;
+	
+	for(int y=0;y<png_data.dims[1];y++)
+	  for(int x=0;x<png_data.dims[0];x++){
+	    
+	    fpix[0]=(x_tile*png_data.dims[0]+x)*scale_factor;
+	    fpix[1]=(y_tile*png_data.dims[1]+y)*scale_factor;
+	    
+	    if(fpix[0]<0 || fpix[0]>=dims[0]
+	       || fpix[1]<0 || fpix[1]>=dims[1]
+	       ) value=obj->cuts[1];
+	    
+	    else{
+	      value = (float) (*obj)(fpix[1],fpix[0]);
+	      //fits_read_pix(f, TFLOAT, fpix.c, 1,&nulv,&value, &anynul, &fstat);
+	      //report_fits_error();
+	    }
+	    
+	    //value-=obj->cuts[0];
+	    
+	    //      cout << "Getting colors cmd=" << scaled_cmap.dim << endl;
+	    obj->scaled_cmap.get_color(value, tmpcol);
+	    
+	    // value=(value-obj->cuts[0])/(obj->cuts[1]-obj->cuts[0])*255.0; 
+	    
+	    // if(value<0) value=0;
+	    // if(value>255) value=255;
+	    //cout << "Color : ";
+	    for(int c=0;c<depth;c++) png_data(y,x,c)=(unsigned char) (tmpcol[c]*255.0);
+	    
+	  // png_data(y,x,0)=(unsigned char) (value);
+	  // png_data(y,x,1)=(unsigned char) (value);
+	  // png_data(y,x,2)=(unsigned char) (value);
+	  // png_data(y,x,3)=255;
+	  }
+	
+	size_t stream_size;
+	char* stream_data;
+	FILE * fst = open_memstream(&stream_data, &stream_size);
+	if(type == "png")
+	  write_png_file(fst, png_data);
+	else
+	  write_jpeg_file(fst, png_data);
+	fclose(fst);
+	
+	// POSSIBLE MEM LEAK ? Does v8::Buffer frees itself its mem content ?? 
+	
+	//  Buffer* bp =Buffer::New(stream_data, stream_size, free_stream_buffer, NULL)
+	Buffer* bp =Buffer::New(stream_data, stream_size, free_stream_buffer, NULL);
+	Handle<Buffer> hbp(bp);
+	
+	
+	return scope.Close(hbp->handle_);  
       }
       
       catch (qk::exception& e){
@@ -522,9 +630,10 @@ namespace sadira{
       return scope.Close(array);
     }
     
+    
     static Handle<Value> gen_histogram(const Arguments& args) {
       
-      jsmat<T>* obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
+      jsmat<T>& imgdata = *ObjectWrap::Unwrap<jsmat<T> >(args.This());
       //cout << "gen histo for " << obj->file_name << endl;
       
       HandleScope scope;
@@ -534,60 +643,56 @@ namespace sadira{
 	return scope.Close(Undefined());
       }
       
-      Local<Object> ar = args[0]->ToObject();
-      Local<Function> result_cb=Local<Function>::Cast(args[1]);
+      Handle<Object> ar = args[0]->ToObject();
 
+      if (!args[1]->IsFunction()) {
+        return ThrowException(Exception::TypeError(String::New("Second argument must be a callback function")));
+      }
 
-      Local<Array> cuts_array = Local<Array>::Cast(ar->Get(String::New("cuts")));
-      Local<Value> nbins_value = Local<Value>::Cast(ar->Get(String::New("nbins")));
+      Handle<Function> result_cb=Handle<Function>::Cast(args[1]);
+      Handle<Array> cuts_array = Handle<Array>::Cast(ar->Get(String::New("cuts")));
       
       double cuts[2];
-      int nbins=nbins_value->ToNumber()->Value();
-
-      cuts[0]= cuts_array->Get(0)->ToNumber()->Value();
-      cuts[1]= cuts_array->Get(1)->ToNumber()->Value();
       
-      args[0]->ToNumber()->Value();
+      if(cuts_array->IsUndefined()) {
+	cuts[0]=imgdata.min();
+	cuts[1]=imgdata.max();
+      }else{
+	cuts[0]= cuts_array->Get(0)->ToNumber()->Value();
+	cuts[1]= cuts_array->Get(1)->ToNumber()->Value();
 
+      }
+
+
+      Handle<Number> nbins_value = Handle<Number>::Cast(ar->Get(String::New("nbins")));
+      
+      int nbins=nbins_value->IsUndefined() ? 200 :  nbins_value->Value();
+      
+      MINFO << "Cuts " << cuts[0] << ", " << cuts[1] << " nbins = " << nbins << endl;
+      //      args[0]->ToNumber()->Value();
+      double low= cuts[0];
+      double max= cuts[1];
+      double bsize=(max-low)/nbins;
+
+      v8::Handle<v8::Array> histo_data = v8::Array::New();
+      v8::Handle<v8::Object> result = v8::Object::New();
+      v8::Handle<v8::Number> start = v8::Number::New(low+.5*bsize);
+      v8::Handle<v8::Number> step = v8::Number::New(bsize);
+
+      result->Set(String::NewSymbol("start"), start);
+      result->Set(String::NewSymbol("step"), step);
+      result->Set(String::NewSymbol("data"), histo_data);
+
+      /*      
+      if(bsize<1){
+	bsize=1.0;
+	nbins=max-low;
+      }
+      */
  
-      Handle<String> histo_csv_data = obj->create_image_histogram(cuts);
+      //Handle<String> histo_csv_data = obj->create_image_histogram(cuts);
       //  cout << " HISTO OK : " << *(String::AsciiValue(histo_csv_data->ToString())) << endl;
-      
-      const unsigned argc = 2;
-      Handle<Value> argv[argc] = { Undefined(), hdus };
-      result_cb->Call(Context::GetCurrent()->Global(), argc, argv );    
-
-      
-      return scope.Close(histo_csv_data);
-    }
-
-
-    Handle<String> create_image_histogram(double* cuts, int nbins){
-      
       try{
-	
-	string result_string;
-
-	jsmat<T>& imgdata=*this;
-
-	//int nbins=200;
-	
-	float low= (int) cuts[0];
-	float max= (int) cuts[1];
-	
-	if(low==-1||max==-1){
-	  low=imgdata.min();
-	  max=imgdata.max();
-	}
-	
-	//cout << "OK2" << endl;
-	
-	float bsize=(max-low)/nbins;
-	
-	if(bsize<1){
-	  bsize=1.0;
-	  nbins=max-low;
-	}
 	
 	vec<unsigned int> histo(nbins);
 	histo.set_all(0);
@@ -601,20 +706,22 @@ namespace sadira{
 	
 	//cout << "OK3" << endl;
 	
-	result_string="pixvalue\tndata\n";
+	//	result_string="pixvalue\tndata\n";
 	
-	char sb[256];
+	//char sb[256];
 	
 	for(int i=0;i<nbins;i++){
-	  sprintf(sb,"%g\t%g\n",low+(i+.5)*bsize, histo[i]*1.0);
-	  result_string+=sb;
+	  histo_data->Set(v8::Number::New(i),Number::New(histo[i]));
+
+	  //sprintf(sb,"%g\t%g\n",low+(i+.5)*bsize, histo[i]*1.0);
+	  //  result_string+=sb;
 	}
 	
 	
-	Handle<String> result = v8::String::New(result_string.c_str());
+	//	Handle<String> result = v8::String::New(result_string.c_str());
 	
 	//cout << "OK5" << endl;
-	return result;
+	//	return result;
       }
       
       catch (qk::exception& e){
@@ -624,14 +731,18 @@ namespace sadira{
       
       
       
-      return Handle<String>();
+      const unsigned argc = 2;
+      Handle<Value> argv[argc] = { Undefined(), result };
+      result_cb->Call(Context::GetCurrent()->Global(), argc, argv );    
+      
+      return scope.Close(result);
     }
     
     
     
     
   };
-
+  
   template <class T> inline jsmat<T>* jsmat_unwrap(v8::Handle<v8::Object> handle) {
     
     
@@ -644,8 +755,9 @@ namespace sadira{
     
     return static_cast<jsmat<T> *>(wrap);
   }
-
-
+  
 }
 
+    
 #endif
+    
