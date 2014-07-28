@@ -2,7 +2,7 @@
     'targets': [
 	{
 	    "target_name": "fits",	
-	    "sources": [ "colormap/colormap_interface.cpp", "fits/fits.cpp", "qk/exception.cpp", "qk/pngwriter.cpp"],
+	    "sources": [ "colormap/colormap_interface.cpp", "fits/fits.cpp", "qk/exception.cpp", "qk/pngwriter.cpp", "qk/jpeg_writer.cpp"],
 	    'include_dirs' : [".","/usr/local/cfitsio/include"],
 
 	    'xcode_settings': {
@@ -13,14 +13,14 @@
 		    '-fexceptions',
 		    '-frtti' 
 		],
-		'OTHER_LDFLAGS': ["-L/usr/local/cfitsio/lib", '-lcfitsio', "-L/opt/local/lib", '-lpng'
+		'OTHER_LDFLAGS': ["-L/usr/local/cfitsio/lib", '-lcfitsio', "-L/opt/local/lib", '-lpng', '-ljpeg'
 		]
 	    },
 
 	    'conditions': [
 	    	
 		['OS=="mac"', {
-		    'ldflags': ['-lcfitsio','-lpng'],
+		    'ldflags': ['-lcfitsio','-lpng', '-ljpeg'],
 		    'cflags_cc': [ '-fexceptions', '-frtti'],
 		    'cflags_cc!': [
 			'-fno-exceptions',
@@ -32,7 +32,7 @@
 	    	
 	    	
 		['OS=="linux"', {
-		    'ldflags': ['-lcfitsio','-lpng'],
+		    'ldflags': ['-lcfitsio','-lpng','-ljpeg'],
 		    'cflags_cc': [ '-fexceptions', '-frtti'],
 		    'cflags_cc!': [
 			'-fno-exceptions',
