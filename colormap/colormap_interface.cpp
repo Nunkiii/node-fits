@@ -12,7 +12,12 @@ namespace sadira{
 
   Persistent<FunctionTemplate> colormap_interface::s_ct;
   
-  Handle<Value> colormap_interface::set_cuts_func(const Arguments& args){
+
+  Handle<Value> colormap_interface::set_cuts_histo(const Arguments& args){
+
+  }
+
+  Handle<Value> colormap_interface::set_cuts(const Arguments& args){
     
     HandleScope scope;
     
@@ -22,24 +27,18 @@ namespace sadira{
     }
     
     colormap_interface* obj = ObjectWrap::Unwrap<colormap_interface>(args.This());
-    
+
     Handle<Array> cutsa = Handle<Array>::Cast(args[0]);
     
-    obj->set_cuts(cutsa);
-    return Handle<Object>(args.This());
+    obj->cuts[0]=cutsa->Get(0)->ToNumber()->Value();
+    obj->cuts[1]=cutsa->Get(1)->ToNumber()->Value();
+
+    obj->rescale_colormap();
+ 
+    return scope.Close(args.This());
     
   }
   
-  void colormap_interface::set_cuts(Handle<v8::Array>& cutsa){
-    
-    cuts[0]=cutsa->Get(0)->ToNumber()->Value();
-    cuts[1]=cutsa->Get(1)->ToNumber()->Value();
-    
-    //cout << "Cuts set to "<< cuts[0] << "," << cuts[1] << endl;
-    
-    rescale_colormap();
-    
-  }
   
   void colormap_interface::rescale_colormap(){
     
@@ -61,7 +60,7 @@ namespace sadira{
   }
   
   
-  Handle<Value> colormap_interface::set_colormap_func(const Arguments& args){
+  Handle<Value> colormap_interface::set_colormap(const Arguments& args){
     
     HandleScope scope;
     
@@ -71,27 +70,19 @@ namespace sadira{
     }
     
     colormap_interface* obj = ObjectWrap::Unwrap<colormap_interface>(args.This());
-    Handle<Array> cutsa = Handle<Array>::Cast(args[0]->ToObject());
+    Handle<Array> cmap_data = Handle<Array>::Cast(args[0]->ToObject());
     
-    //  cout << "Setting colormap NC="<< cutsa->Length() << endl;
-    obj->set_colormap(cutsa);
-    
-    
-    return Handle<Object>(args.This());
-    
-  }
-  
-  
-  void colormap_interface::set_colormap(Handle<v8::Array>& colormap) {
-    cmap.ttd();
+    //  cout << "Setting colormap NC="<< cmap_data->Length() << endl;
+
+    obj->cmap.ttd();
     qk::colormap_value<float>* cmv;
-    unsigned int ncolors=colormap->Length();
+    unsigned int ncolors=cmap_data->Length();
     
     for(unsigned int c=0;c<ncolors;c++){
       cmv=new qk::colormap_value<float>();
       //  MINFO << "Reading color "<<c << endl;
       
-      Local<Array> cmva = Local<Array>::Cast(colormap->Get(c));
+      Local<Array> cmva = Local<Array>::Cast(cmap_data->Get(c));
 	
       for(int cpn=0;cpn<5;++cpn){
 	//  MINFO << "read " << cmap[c][cpn].asFloat() << endl;
@@ -102,19 +93,26 @@ namespace sadira{
       // (*cmv)[4]+=cuts[0];
       
       //    MINFO << "Reading color "<<c << "done" << endl;
-      cmap.add(cmv);
+      obj->cmap.add(cmv);
     }  
+
+    
+    return scope.Close(args.This());
+    
   }
+  
+  
  
   void colormap_interface::init(v8::Handle<Object> target){
     Local<FunctionTemplate> t = FunctionTemplate::New(New);
     
     s_ct = Persistent<FunctionTemplate>::New(t);
-    s_ct->InstanceTemplate()->SetInternalFieldCount(1);
+    s_ct->InstanceTemplate()->SetInternalFieldCount(3);
     s_ct->SetClassName(String::NewSymbol("BaseClass"));
 
-    NODE_SET_PROTOTYPE_METHOD(s_ct, "set_colormap", set_colormap_func);
-    NODE_SET_PROTOTYPE_METHOD(s_ct, "set_cuts", set_cuts_func);
+    NODE_SET_PROTOTYPE_METHOD(s_ct, "set_colormap", set_colormap);
+    NODE_SET_PROTOTYPE_METHOD(s_ct, "set_cuts", set_cuts);
+    NODE_SET_PROTOTYPE_METHOD(s_ct, "set_cuts_histo", set_cuts_histo);
     
     //target->Set(String::NewSymbol("colormap_interface"), s_ct->GetFunction());
     //s_ct->Set(String::NewSymbol("set_colormap"),FunctionTemplate::New(set_colormap_func)->GetFunction());
