@@ -39,7 +39,6 @@ namespace sadira{
       Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
       
       s_ctm = Persistent<FunctionTemplate>::New(tpl);
-      
       s_ctm->Inherit(colormap_interface::s_ct); 
       
       s_ctm->InstanceTemplate()->SetInternalFieldCount(1);
@@ -59,6 +58,7 @@ namespace sadira{
       
       target->Set(String::NewSymbol(class_name), s_ctm->GetFunction());
       constructor = Persistent<Function>::New(tpl->GetFunction());
+      
     }
 
   private:
