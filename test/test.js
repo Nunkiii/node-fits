@@ -10,9 +10,9 @@ var fits=require("../build/Release/fits");
 var f = new fits.file("example.fits"); //The file is automatically opened for reading if the file name is specified on constructor.
 
 
-//can also use that way.
+//can also use that way : 
 //f.file_name="example.fits";
-//f.open();
+//f.open(); //Not mandatory
 
 
 //f.file_name=process.argv[2];
@@ -82,9 +82,9 @@ f.read_image_hdu(function(error, image){
 
         //Get the image binary data into an arraybuffer 
 
-	var ab=image_data.get_data();
+	var ab=image.get_data();
 	console.log("image data bytes " + ab.length);
-
+	
 	
 
     }
