@@ -59,7 +59,7 @@ namespace sadira{
   void fits::open_file(const char* file_name, int _mode){
 
 
-    if(f!=0) return;
+    if(f!=0){ close_file(); f=0;}
     /*
     if(!file_name){//=="" || file_name=="Undefined"){
       throw qk::exception("No file name set, use set_file command to provide one");
@@ -104,11 +104,6 @@ namespace sadira{
   }
 
 
-  void fits::check_file_is_open(){
-    if(!f)
-      throw qk::exception("Fits file is not opened !");
-  }
-  
   
   void fits::close_file() {
     if(f){
@@ -254,16 +249,19 @@ namespace sadira{
     }
   }
 
-  
-  Handle<Value> fits::open(const Arguments& args) {
-  
+
+  void fits::check_file_is_open(const Arguments& args) {
+
+    if(f) return;
+
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
 
     try{
-
+      
       Handle<Value> fff=args.This()->Get(String::NewSymbol("file_name"));
+            
       v8::String::Utf8Value fn(fff->ToString());
-
+      
       //string fn=obj->get_file_name(args);
 
       MINFO << "Opening " << *fn << endl;
@@ -271,9 +269,16 @@ namespace sadira{
     }
     catch (qk::exception& e){
       v8::ThrowException(v8::String::New(e.mess.c_str()));
-      return Undefined();
+      //return Undefined();
     }
-
+    
+  }
+  
+  
+  
+  Handle<Value> fits::open(const Arguments& args) {
+    fits* obj = ObjectWrap::Unwrap<fits>(args.This());
+    obj->check_file_is_open(args);
     return args.This();
   }
 
@@ -316,6 +321,7 @@ namespace sadira{
     char kname[FLEN_KEYWORD];
     char kvalue[FLEN_VALUE];
     char kcomment[FLEN_COMMENT];
+
   
     fits_get_num_hdus(f, &nhdu,&fstat); report_fits_error();  /* Get the current HDU position */
     fits_get_hdu_num(f, &hdupos);  /* Get the current HDU position */
@@ -382,6 +388,8 @@ namespace sadira{
 
       //      obj->open_file(obj->get_file_name(args));
       
+      obj->check_file_is_open(args);
+
       fits_get_num_hdus(obj->f, &nhdu,&obj->fstat); obj->report_fits_error();  /* Get the current HDU position */
       fits_get_hdu_num(obj->f, &hdupos);  /* Get the current HDU position */
       fits_get_hdrspace(obj->f, &nkeys, NULL, &obj->fstat); /* get # of keywords */
@@ -418,7 +426,7 @@ namespace sadira{
 	
       }
       
-      obj->close_file();
+      //      obj->close_file();
 
       const unsigned argc = 2;
       Handle<Value> argv[argc] = { Undefined(), hdus };
@@ -443,6 +451,7 @@ namespace sadira{
     HandleScope scope;
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
     //    obj->file_name=obj->get_file_name(args);
+    obj->check_file_is_open(args);
 
     return scope.Close(obj->get_headers_array());
   }
@@ -469,6 +478,7 @@ namespace sadira{
     try{
       //      obj->file_name=obj->get_file_name(args);
       //     obj->open_file(0);
+      obj->check_file_is_open(args);
       obj->set_current_hdu(hduid);
       //cout << "setting hdu to " << hduid << "OK!!!!!"<<endl;
       return Handle<Object>(args.This());
@@ -495,7 +505,8 @@ namespace sadira{
     
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
     //    obj->file_name=obj->get_file_name(args);
-    
+    obj->check_file_is_open(args);
+
     return scope.Close(obj->get_table_column(args[0]->NumberValue(), args[1]->NumberValue()));
   }
   
@@ -589,6 +600,8 @@ namespace sadira{
     }
     
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
+    obj->check_file_is_open(args);
+
     //obj->file_name=obj->get_file_name(args);
     
     return scope.Close(obj->get_table_columns(args[0]->NumberValue()));
@@ -623,7 +636,9 @@ namespace sadira{
     v8::Local<v8::Function> cb=Local<Function>::Cast(args[0]);
 
     try{
-      //obj->open_file(0);
+      obj->check_file_is_open(args);
+
+     //obj->open_file(0);
       
       int bitpix=0;
       int eqbitpix=0;
@@ -641,15 +656,8 @@ namespace sadira{
 
       
       mem<long> hdd;
-      MINFO << "OK" << endl;      
       obj->get_img_hdu_size(hdd);
-      MINFO << "OK" << endl;      
-
-      MINFO << "Creating matrix " << endl;
-      
       Handle<Value> m=obj->create_matrix_type(ftype, hdd);
-      MINFO << "OK" << endl;      
-
       
       if(m.IsEmpty()){
 	MERROR << "Empty handle !" << endl;
@@ -662,11 +670,11 @@ namespace sadira{
       
       long nel=image_data->nel();
       
-      MINFO << "Creating matrix cntptr="<< image_data <<" OK  N="<< image_data->nel() << endl;
+      //      MINFO << "Creating matrix cntptr="<< image_data <<" OK  N="<< image_data->nel() << endl;
       
       fits_read_img(obj->f, ftype, 1, nel, nulval.c, image_data->data_pointer(), &anynul, &obj->fstat);
       obj->report_fits_error();
-      MINFO << "Ok image read dim =" << image_data->nel()<<endl; 
+      // MINFO << "Ok image read dim =" << image_data->nel()<<endl; 
 
       
       const unsigned argc = 2;
@@ -703,7 +711,7 @@ namespace sadira{
 
     jsmat<unsigned short>* image_data = ObjectWrap::Unwrap<jsmat<unsigned short> >(ar);
     
-
+    obj->check_file_is_open(args);
     //obj->open_file(obj->get_file_name(args),1);
 
     obj->write_image(*image_data);
