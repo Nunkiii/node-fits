@@ -574,9 +574,6 @@ namespace sadira{
 	float* b=(float*)node::Buffer::Data(slowBuffer);
 	memcpy(b+i, &v, 4);
       }
-
-      
-      
       
       // Now we need to create the JS version of the Buffer I was telling you about.
       // To do that we need to actually pull it from the execution context.
@@ -600,7 +597,7 @@ namespace sadira{
       // This Buffer can now be provided to the calling JS code as easy as this:
       return scope.Close(actualBuffer);
 
-
+      /*
       static Persistent<Function> uint16_array_constructor;
 
       if (uint16_array_constructor.IsEmpty()) {
@@ -628,6 +625,7 @@ namespace sadira{
       for(int i=0;i<obj->dim;i++) data[i]=obj->c[i];
       
       return scope.Close(array);
+      */
     }
     
     

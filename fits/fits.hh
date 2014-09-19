@@ -1,3 +1,7 @@
+/*
+- 2003 - 2014 - The Qk/Sadira project - P.G. Sprimont @ INAF, Bologna, IT. 
+*/
+
 #ifndef __FITS_HH__
 #define __FITS_HH__
 
@@ -46,7 +50,7 @@ namespace sadira{
 
     void send_status_message(v8::Local<v8::Function>& cb,const string& type, const string& message);
 
-    void check_file_is_open();
+    void check_file_is_open(const Arguments& args);
 
     //    Handle<node::Buffer> gen_pngtile(Handle<Array>& parameters);
     
@@ -184,8 +188,7 @@ namespace sadira{
       if (typeid(T)==typeid(double)){ MINFO << "OK double ! " << endl; return DOUBLE_IMG;}
       
 
-      MERROR << "Impossible to convert to valid FITS image type : typeid= " << typeid(T).name() << endl;
-      throw 0;
+      throw qk::exception("Impossible to convert to valid FITS image type for cpp typeid = " + string(typeid(T).name()) );
     }
     
     template <typename T> void read_image(mat<T>& _img){
