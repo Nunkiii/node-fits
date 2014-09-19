@@ -643,18 +643,14 @@ namespace sadira{
       int bitpix=0;
       int eqbitpix=0;
       
-
       fits_get_img_type(obj->f,&bitpix,&obj->fstat); obj->report_fits_error();
-
       fits_get_img_equivtype(obj->f,&eqbitpix,&obj->fstat); obj->report_fits_error();
 
       vec<char> nulval(15);
       nulval.set_all(0);
       int anynul=0;
-
       int ftype=obj->get_equiv_image_type(eqbitpix);
 
-      
       mem<long> hdd;
       obj->get_img_hdu_size(hdd);
       Handle<Value> m=obj->create_matrix_type(ftype, hdd);

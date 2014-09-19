@@ -1,6 +1,8 @@
 A set of (experimental) tools to access FITS files from Node.
 =========
 
+FITS is a versatile file format used to store astronomical images and data (http://fits.gsfc.nasa.gov/fits_home.html). This node plugin 
+
 ### To build:
 
 The `node-fits` module has been successfully compiled and tested on gnu/linux and on MacOS. node-gyp is used as the building tool. Other platforms have not been tested yet.
@@ -89,10 +91,9 @@ The image.tile() function was initially designed for a image viewer's tile gener
 By default cuts are set to min,max and nbins to 200
 
 	   image.histogram({}, function(error, histo){ 
-	    
-		if(error)
+	   	if(error)
 			console.log("Histo error : " + error);
-	     	else{
+else{
 		
 		console.log("HISTO : " + JSON.stringify(histo));
 		
