@@ -391,21 +391,26 @@ namespace sadira{
 	fits_movabs_hdu(obj->f,ih,&hdutype,&obj->fstat); obj->report_fits_error();
 	
 	v8::Handle<v8::Object> hdu = v8::Object::New();
-	v8::Local<v8::Array> fits_keys = v8::Array::New();
+	v8::Handle<v8::Object> fits_keys = v8::Object::New();
 	
 	hdus->Set(v8::Number::New(ih-1), hdu);
 	
 	for (ii = 1; ii <= nkeys; ii++) { /* Read and print each keywords */
 	  fits_read_keyn(obj->f, ii, kname, kvalue, kcomment, &obj->fstat); obj->report_fits_error();
 	  
-	  //v8::Handle<v8::Object> key = v8::Object::New();
-	  v8::Local<v8::Array> key = v8::Array::New();
+	  v8::Handle<v8::Object> key_data = v8::Object::New();
+
+	  double num_value; 
+	  if(sscanf(kvalue,"%lf",&num_value)==1)
+	    key_data->Set(String::New("value"),Number::New( num_value));
+	  else
+	    key_data->Set(String::New("value"),String::New( kvalue));
+
+	  key_data->Set(String::New("comment"),String::New( kcomment));
 	  
-	  key->Set(v8::Number::New(0),String::New( kname));
-	  key->Set(v8::Number::New(1),String::New( kvalue));
-	  key->Set(v8::Number::New(2),String::New( kcomment));
+	  fits_keys->Set(String::New(kname), key_data);
 	  
-	  fits_keys->Set(v8::Number::New(ii-1), key);
+	  //fits_keys->Set(v8::Number::New(ii-1), key);
 	}
 	
 	string type_name="bug";
@@ -790,11 +795,12 @@ namespace sadira{
     s_ctf = Persistent<FunctionTemplate>::New(tpl);
 
     s_ctf->Inherit(colormap_interface::s_ct); 
-    s_ctf->InstanceTemplate()->SetInternalFieldCount(8);
+    s_ctf->InstanceTemplate()->SetInternalFieldCount(9);
     s_ctf->SetClassName(String::NewSymbol("fits"));
 
     NODE_SET_PROTOTYPE_METHOD(s_ctf, "open", open);
     NODE_SET_PROTOTYPE_METHOD(s_ctf, "get_headers", get_headers);
+    NODE_SET_PROTOTYPE_METHOD(s_ctf, "get_headers_array", get_headers_array);
     NODE_SET_PROTOTYPE_METHOD(s_ctf, "set_hdu",set_hdu);
     NODE_SET_PROTOTYPE_METHOD(s_ctf, "set_file",set_file);
     NODE_SET_PROTOTYPE_METHOD(s_ctf, "get_table_column",get_table_column);
