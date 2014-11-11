@@ -18,7 +18,7 @@ namespace sadira{
 
   public:
 
-    static void init(Handle<Object> target);
+    static void init_interface(Persistent<FunctionTemplate>& s_ct);
     
   protected:
 
@@ -33,12 +33,13 @@ namespace sadira{
     static Handle<Value> set_cuts_histo(const Arguments& args);
     static Handle<Value> set_cuts(const Arguments& args);
     static Handle<Value> set_colormap(const Arguments& args);
-    
+    /*
+  public:
     static Handle<Value> New(const Arguments& args){
       HandleScope scope;
       return args.This();
     }
-    
+    */    
   };
 }
 

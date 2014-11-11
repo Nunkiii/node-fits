@@ -33,6 +33,10 @@ namespace sadira{
   template <class T> Persistent<FunctionTemplate> jsmat<T>::s_ctm;
   template <class T> Persistent<Function> jsmat<T>::constructor;
 
+  void free_stream_buffer(char* b, void*x){
+    free(b);
+  }
+
 
   void fits::report_fits_error(){
     if(fstat){
@@ -51,7 +55,7 @@ namespace sadira{
   }
   
   fits::~fits() {
-    MINFO << "destructor called !" << endl;
+    //MINFO << "destructor called !" << endl;
     close_file();
     fclose(ffitsio_error);
   }
@@ -100,7 +104,7 @@ namespace sadira{
     
     report_fits_error();
 
-    MINFO << "OK FITS opened pointer = " << f << endl;
+    //MINFO << "OK FITS opened pointer = " << f << endl;
   }
 
 
@@ -135,7 +139,7 @@ namespace sadira{
     
     //if(c_hdu!=_hdu_id){
     //fstat=0;
-    MINFO << "Switching to hdu " << _hdu_id << endl;
+    //MINFO << "Switching to hdu " << _hdu_id << endl;
     ffmahd (f, _hdu_id+1, NULL, &fstat);  
     report_fits_error();
     c_hdu=_hdu_id;
@@ -175,7 +179,7 @@ namespace sadira{
     
     set_current_hdu(c_hdu);
     fstat=0;
-    //    MINFO << "Getting hdu dimensions..."<<endl;
+    //    //MINFO << "Getting hdu dimensions..."<<endl;
     int img_hdu_ndims=0;
     fits_get_img_dim(f, &img_hdu_ndims, &fstat);
     report_fits_error();
@@ -187,7 +191,7 @@ namespace sadira{
     fits_get_img_size(f, img_hdu_ndims, hdims.c, &fstat);
     report_fits_error();
 
-    MINFO << "Full image HDU size " << hdims[0] << ", " << hdims[1] <<endl;
+    //MINFO << "Full image HDU size " << hdims[0] << ", " << hdims[1] <<endl;
   }
 
   int fits::get_equiv_image_type(int _img_ftype){
@@ -216,7 +220,7 @@ namespace sadira{
 
     if (args.IsConstructCall()) {
       
-      MINFO << "Createing new FITS object !" << endl;
+      //MINFO << "Createing new FITS object !" << endl;
 
       fits* obj = new fits();
       obj->Wrap(args.This());
@@ -242,7 +246,7 @@ namespace sadira{
       
       //return scope.Close(args.This());
     }else{
-      MINFO << "Plain func construct call !" << endl;
+      //MINFO << "Plain func construct call !" << endl;
       const int argc = 1;
       Local<Value> argv[argc] = { args[0] };
       return scope.Close(constructor->NewInstance(argc, argv));
@@ -264,7 +268,7 @@ namespace sadira{
       
       //string fn=obj->get_file_name(args);
 
-      MINFO << "Opening " << *fn << endl;
+      //MINFO << "Opening " << *fn << endl;
       obj->open_file(*fn);
     }
     catch (qk::exception& e){
@@ -477,7 +481,7 @@ namespace sadira{
     //obj->file_name=obj->get_file_name(args);
 
     int hduid = args[0]->ToNumber()->Value();
-    MINFO << "Setting DU id to " << hduid << endl;
+    //MINFO << "Setting DU id to " << hduid << endl;
 
     //Handle<Array> cutsa = Handle<Array>::Cast(args[0]);
     try{
@@ -636,7 +640,7 @@ namespace sadira{
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
     //obj->file_name=obj->get_file_name(args);
 
-    MINFO << "Reading from FITS pointer = " << obj->f <<  " status is " << obj->fstat <<  endl;
+    //MINFO << "Reading from FITS pointer = " << obj->f <<  " status is " << obj->fstat <<  endl;
 
     v8::Local<v8::Function> cb=Local<Function>::Cast(args[0]);
 
@@ -794,11 +798,12 @@ namespace sadira{
 
   void fits::Init(Handle<Object> target) {
     // Prepare constructor template
+
     Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
     
     s_ctf = Persistent<FunctionTemplate>::New(tpl);
 
-    s_ctf->Inherit(colormap_interface::s_ct); 
+    // s_ctf->Inherit(colormap_interface::s_ct); 
     s_ctf->InstanceTemplate()->SetInternalFieldCount(9);
     s_ctf->SetClassName(String::NewSymbol("fits"));
 
@@ -815,17 +820,18 @@ namespace sadira{
     target->Set(String::NewSymbol("file"), s_ctf->GetFunction());
     constructor = Persistent<Function>::New(tpl->GetFunction());
   }
+
 }
 
-
-
-namespace sadira{
-}
 
 void init(Handle<Object> exports) {
 
-  sadira::colormap_interface::init(exports);
+  //  sadira::colormap_interface::init(exports);
+
+
   sadira::fits::Init(exports);
+
+  //  return;
 
   //some javascriptized quarklib objects
 
@@ -841,7 +847,8 @@ void init(Handle<Object> exports) {
 
   sadira::jsvec<int>::init(exports,"vec_int");
   sadira::jsvec<float>::init(exports,"vec_float");
-  /* etc.... */
+  sadira::jsvec<float>::init(exports,"vec_double");
+
 
 }
 

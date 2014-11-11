@@ -2,7 +2,7 @@
     'targets': [
 	{
 	    "target_name": "fits",	
-	    "sources": [ "colormap/colormap_interface.cpp", "fits/fits.cpp", "qk/exception.cpp", "qk/pngwriter.cpp", "qk/jpeg_writer.cpp"],
+	    "sources": [ "fits/fits.cpp", "qk/exception.cpp", "qk/pngwriter.cpp", "qk/jpeg_writer.cpp"],
 	    'include_dirs' : [".","/usr/local/cfitsio/include"],
 
 	    'xcode_settings': {
