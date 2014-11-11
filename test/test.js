@@ -9,7 +9,8 @@ var file_name="example.fits"; //or better: var file_name=process.argv[2];
 var fits=require("../build/Release/fits"); //This must point to the compiled node-fits plugin.
 var f = new fits.file(file_name); //The file is automatically opened (for reading) if the file name is specified on constructor.
 
-
+var iii=new fits.mat_ushort();
+console.log("zero = "+iii.width());
 /*
 
 The file can also be specified that way : 
@@ -45,6 +46,7 @@ f.get_headers(function(error, headers){
 	
 	if(image){
 	    
+
 	    console.log("Read image : " + image.width() + ", " + image.height()); 
 	    
 	    var colormap=[ [0,0,0,1,0], [1,0,1,1,.8], [1,.2,.2,1,.9], [1,1,1,1,1] ];
