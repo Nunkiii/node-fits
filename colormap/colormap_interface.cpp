@@ -14,7 +14,7 @@ namespace sadira{
   
 
   Handle<Value> colormap_interface::set_cuts_histo(const Arguments& args){
-
+    return args.This();
   }
 
   Handle<Value> colormap_interface::set_cuts(const Arguments& args){
@@ -103,12 +103,13 @@ namespace sadira{
   
   
  
-  void colormap_interface::init(v8::Handle<Object> target){
-    Local<FunctionTemplate> t = FunctionTemplate::New(New);
+  void colormap_interface::init_interface(Persistent<FunctionTemplate>& s_ct){
+
+    //Local<FunctionTemplate> t = FunctionTemplate::New(New);
     
-    s_ct = Persistent<FunctionTemplate>::New(t);
-    s_ct->InstanceTemplate()->SetInternalFieldCount(3);
-    s_ct->SetClassName(String::NewSymbol("BaseClass"));
+    // s_ct = Persistent<FunctionTemplate>::New(t);
+    // s_ct->InstanceTemplate()->SetInternalFieldCount(3);
+    // s_ct->SetClassName(String::NewSymbol("BaseClass"));
 
     NODE_SET_PROTOTYPE_METHOD(s_ct, "set_colormap", set_colormap);
     NODE_SET_PROTOTYPE_METHOD(s_ct, "set_cuts", set_cuts);

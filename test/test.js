@@ -1,18 +1,26 @@
 /*
 
-  node-fits test file.
+  node-fits test file. WB: Pierre Sprimont <nunki@unseen.it>
 
 */
 
+var file_name="example.fits"; //or, more usefull: var file_name=process.argv[2]; 
 
-var file_name="example.fits"; //or better: var file_name=process.argv[2]; 
-var fits=require("../build/Release/fits"); //This must point to the compiled node-fits plugin.
+//Including the fits plugin. The path must point to a compiled node-fits plugin.
+var fits=require("../build/Release/fits"); 
+
+//Shows all the new JS 'classes' available to the user :
+console.log("New objects available : ");for (var fm in fits) console.log("\t-> " + fm);
+
 var f = new fits.file(file_name); //The file is automatically opened (for reading) if the file name is specified on constructor.
 
+var iii = new fits.mat_ushort();
+for (var p in iii) console.log("IMPROP : " + p);
+console.log("matrix OK");
 
 /*
 
-The file can also be specified that way : 
+The file could also be specified that way and opened 'manually' 
 
    f.file_name="example.fits";
    f.open(); 
@@ -22,7 +30,7 @@ The file can also be specified that way :
 
 console.log("File is " + f.file_name); //The file_name attribute contains the actually assigned file name.
 
-//Getting the header data from all the hdus present on the fits file
+//Getting the header data from all the data-units present on the fits file
 
 f.get_headers(function(error, headers){
     
@@ -31,12 +39,15 @@ f.get_headers(function(error, headers){
 	return;
     }
     
-    console.log("FITS Headers : " + JSON.stringify(headers,null,5));
+    //console.log("FITS Headers : " + JSON.stringify(headers,null,5));
+
     
     //Reading an image as an arraybuffer of floats (4bytes/pixel). The returned image is another JS imported C++ class representing 2D data organised by rows: jsmat class. 
-    //(this has to be extended to extract the data in other javascript supported binary types)
-    
+  //(this has to be extended to extract the data in other javascript supported binary types)
+  
     f.read_image_hdu(function(error, image){
+
+
 	
 	if(error){
 	    console.log("Bad things happened while reading image hdu : " + error);
@@ -44,8 +55,10 @@ f.get_headers(function(error, headers){
 	}
 	
 	if(image){
+
+	    //for (var ip in image) console.log("IP : " + ip);
 	    
-	    console.log("Read image : " + image.width() + ", " + image.height()); 
+	    console.log("Image size : " + image.width() + " X " + image.height()); 
 	    
 	    var colormap=[ [0,0,0,1,0], [1,0,1,1,.8], [1,.2,.2,1,.9], [1,1,1,1,1] ];
 	    var cuts=[0,200];

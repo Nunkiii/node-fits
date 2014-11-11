@@ -8,7 +8,7 @@
 #include <qk/pngwriter.hh>
 #include <qk/jpeg_writer.hh>
 #include <qk/dcube.hh>
-#include <colormap/colormap_interface.hh>
+#include <qk/colormap.hh>
 
 #ifdef __APPLE__
 #ifdef __cplusplus
@@ -29,24 +29,30 @@ namespace sadira{
   void free_stream_buffer(char* b, void*x);
   
   template <typename T> class jsmat 
-    : public colormap_interface, public mat<T> {
+    : public ObjectWrap, public mat<T> {
   public:
     
     static Persistent<FunctionTemplate> s_ctm;    
     static Persistent<Function> constructor;
     
     static void init(Handle<Object> target, const char* class_name){
+
+
+      cout << "Configuring " << class_name << "...."<<endl;
+
       Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
       
       s_ctm = Persistent<FunctionTemplate>::New(tpl);
-      s_ctm->Inherit(colormap_interface::s_ct); 
+      //s_ctm->Inherit(colormap_interface::s_ct); 
       
-      s_ctm->InstanceTemplate()->SetInternalFieldCount(1);
+      s_ctm->InstanceTemplate()->SetInternalFieldCount(11);
       s_ctm->SetClassName(String::NewSymbol(class_name));
-      
+
+      //colormap_interface::init_interface(s_ctm);
+
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "histogram", gen_histogram);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "get_data", get_data);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "tile",gen_tile);
+      NODE_SET_PROTOTYPE_METHOD(s_ctm, "tile",tile);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "width",width);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "height",height);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "resize",resize);
@@ -55,13 +61,36 @@ namespace sadira{
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "extend",extend);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "swapx",swapx);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "swapy",swapy);
+      NODE_SET_PROTOTYPE_METHOD(s_ctm, "set_colormap", set_colormap);
+      NODE_SET_PROTOTYPE_METHOD(s_ctm, "set_cuts", set_cuts);
+      NODE_SET_PROTOTYPE_METHOD(s_ctm, "set_cuts_histo", set_cuts_histo);
       
       target->Set(String::NewSymbol(class_name), s_ctm->GetFunction());
       constructor = Persistent<Function>::New(tpl->GetFunction());
       
     }
-
+    
+    qk::colormap<float> cmap;
+    qk::colormap_array<float> scaled_cmap;
+    double cuts[2];
+    
   private:
+
+    static Handle<Value> New(const Arguments& args) {
+      HandleScope scope;
+      int d0=0,d1=0;
+      
+      if (args.Length() >=2) {
+	d0=args[0]->ToNumber()->Value();
+	d1=args[1]->ToNumber()->Value();
+      }
+
+      jsmat<T>* obj = new jsmat<T>(d0,d1);
+      obj->Wrap(args.This());
+
+      //args.This()->Set(String::NewSymbol("id"), Number::New(12345));
+      return args.This();
+    }
     
 
   public:
@@ -87,28 +116,13 @@ namespace sadira{
     }
 
 
-    static Handle<Value> New(const Arguments& args) {
-      HandleScope scope;
-      int d0=0,d1=0;
-      
-      if (args.Length() >=2) {
-	d0=args[0]->ToNumber()->Value();
-	d1=args[1]->ToNumber()->Value();
-      }
-
-      jsmat<T>* obj = new jsmat<T>(d0,d1);
-      obj->Wrap(args.This());
-
-      //args.This()->Set(String::NewSymbol("id"), Number::New(12345));
-      return args.This();
-    }
 
     static Handle<Value> Instantiate(int d0=0, int d1=0) {
       HandleScope scope;
       int argc=0;
       Local<v8::Value> argv[2];
 
-      cout << "Inst new matrix " << d0 << ", " << d1 << endl;
+      //cout << "Inst new matrix " << d0 << ", " << d1 << endl;
       
       if(d0>0 || d1>0){
 	argv[0]=Local<v8::Value>::New(Number::New(d0));
@@ -131,9 +145,101 @@ namespace sadira{
     }
     */
 
+
+    
+    static Handle<Value> set_cuts_histo(const Arguments& args){
+      return args.This();
+    }
+    
+    static Handle<Value> set_cuts(const Arguments& args){
+      
+      HandleScope scope;
+      
+      if (args.Length() < 1) {
+	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
+	return scope.Close(Undefined());
+      }
+      
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.This());
+      
+      Handle<Array> cutsa = Handle<Array>::Cast(args[0]);
+      
+      obj->cuts[0]=cutsa->Get(0)->ToNumber()->Value();
+      obj->cuts[1]=cutsa->Get(1)->ToNumber()->Value();
+      
+      obj->rescale_colormap();
+      
+      return scope.Close(args.This());
+      
+    }
+    
+  
+    void rescale_colormap(){
+      
+      scaled_cmap = cmap;
+      
+      int ci;//,cc;
+      //  lel<colormap_value<float>*> *lcv=cmap.G;
+      
+      for(ci=0;ci<scaled_cmap.dim;ci++){
+	
+	//    for(cc=0;cc<4;cc++)scaled_cmap[ci][cc]=(unsigned char)((*(**lcv))[cc]*255);
+	
+	scaled_cmap[ci][4]*=(cuts[1]-cuts[0]);
+	scaled_cmap[ci][4]+=cuts[0];
+	
+	//lcv=lcv->d;
+      }
+      
+    }
+    
+    
+    static Handle<Value> set_colormap(const Arguments& args){
+      
+      HandleScope scope;
+      
+      if (args.Length() < 1) {
+	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
+	return scope.Close(Undefined());
+      }
+      
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.This());
+      Handle<Array> cmap_data = Handle<Array>::Cast(args[0]->ToObject());
+      
+      //  cout << "Setting colormap NC="<< cmap_data->Length() << endl;
+      
+      obj->cmap.ttd();
+      qk::colormap_value<float>* cmv;
+      unsigned int ncolors=cmap_data->Length();
+      
+      for(unsigned int c=0;c<ncolors;c++){
+	cmv=new qk::colormap_value<float>();
+	//  MINFO << "Reading color "<<c << endl;
+	
+	Local<Array> cmva = Local<Array>::Cast(cmap_data->Get(c));
+	
+	for(int cpn=0;cpn<5;++cpn){
+	  //  MINFO << "read " << cmap[c][cpn].asFloat() << endl;
+	  (*cmv)[cpn]=(float)cmva->Get(cpn)->ToNumber()->Value();
+	}
+	
+	//    (*cmv)[4]*=(cuts[1]-cuts[0]);
+	// (*cmv)[4]+=cuts[0];
+	
+	//    MINFO << "Reading color "<<c << "done" << endl;
+	obj->cmap.add(cmv);
+      }  
+      
+    
+      return scope.Close(args.This());
+      
+    }
+    
+    
+    
     static v8::Handle<v8::Value> resize(const v8::Arguments& args) {
       v8::HandleScope scope;
-
+      
       if (args.Length() < 2) {
 	ThrowException(Exception::TypeError(String::New("You must pass width and height as parameters")));
 	return scope.Close(Undefined());
@@ -141,7 +247,7 @@ namespace sadira{
 
       jsmat<T>* obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
       //cout << "OBJ= "<< obj <<" Img w="<<obj->dims[0]<<endl;
-      MINFO << "redim matrix to " << args[0]->NumberValue() <<", " << args[1]->NumberValue() << endl;
+      //MINFO << "redim matrix to " << args[0]->NumberValue() <<", " << args[1]->NumberValue() << endl;
 
       obj->redim(args[0]->NumberValue(), args[1]->NumberValue());
       return scope.Close(args.This());
@@ -191,7 +297,7 @@ namespace sadira{
 
 
 
-      cout << "rect is " << r[0] << ", "<< r[1] << ", "<< r[2] << ", "<< r[3] << endl;
+      //cout << "rect is " << r[0] << ", "<< r[1] << ", "<< r[2] << ", "<< r[3] << endl;
       
       if(obj->is_in(r)){
 	//v8::String::Utf8Value fffu(hv->ToString());
@@ -225,17 +331,17 @@ namespace sadira{
 
     static v8::Handle<v8::Value> extend(const v8::Arguments& args) {
 
-      cout << "Extend !" << endl;
+      //cout << "Extend !" << endl;
       v8::HandleScope scope;
       jsmat<T>* obj = NULL;
-      cout << "Extend !" << endl;
+      //cout << "Extend !" << endl;
       obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
 
       if (args.Length() < 1) {
 	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
 	return scope.Close(Undefined());
       }
-      cout << "Extend !" << endl;
+      //cout << "Extend !" << endl;
       Local<Object> params = Local<Object>::Cast(args[0]->ToObject()); //->Get(String::New("cuts")));
 
       Handle<Value> hv; 
@@ -246,7 +352,7 @@ namespace sadira{
       hv=params->Get(String::NewSymbol("w")); if(hv != Undefined()) r[2]=hv->ToNumber()->Value();else r[2]=obj->dims[0]-r[0];
       hv=params->Get(String::NewSymbol("h")); if(hv != Undefined()) r[3]=hv->ToNumber()->Value();else r[3]=obj->dims[1]-r[1];
 
-      cout << "rect is " << r[0] << ", "<< r[1] << ", "<< r[2] << ", "<< r[3] << endl;
+      //cout << "rect is " << r[0] << ", "<< r[1] << ", "<< r[2] << ", "<< r[3] << endl;
 
       if(r[2]<=obj->dims[0] || r[3]<=obj->dims[1] ){
 	ThrowException(Exception::TypeError(String::New("Invalid area for cropping")));
@@ -266,7 +372,7 @@ namespace sadira{
       return scope.Close(args.This());
     }
 
-    static v8::Handle<v8::Value> gen_tile(const v8::Arguments& args) {
+    static v8::Handle<v8::Value> tile(const v8::Arguments& args) {
 
       v8::HandleScope scope;
 
@@ -317,7 +423,7 @@ namespace sadira{
 	type=*s;
       }
 
-      MINFO << "Building tile sz " << ts[0] << ", " << ts[1] << " coord " << x_tile << ", " << y_tile << " z= " << zoom << " type " << type << endl;
+      //MINFO << "Building tile sz " << ts[0] << ", " << ts[1] << " coord " << x_tile << ", " << y_tile << " z= " << zoom << " type " << type << endl;
 
       //return scope.Close(args.This());
       
@@ -414,100 +520,6 @@ namespace sadira{
     }
     
     
-    v8::Handle<node::Buffer> gen_pngtile(Handle<Array>& parameters,Handle<Array>& tile_size) {
-      
-      //  float sbig_start[2];
-      // float sbig_size[2];
-      //int png_dims[2];
-      int x_tile,y_tile,zoom;
-      
-      x_tile=parameters->Get(0)->ToNumber()->Value();
-      y_tile=parameters->Get(1)->ToNumber()->Value();
-      zoom=parameters->Get(2)->ToNumber()->Value();
-
-      int ts[2]={ 
-	(int) tile_size->Get(0)->ToNumber()->Value(),
-	(int) tile_size->Get(1)->ToNumber()->Value(),
-      };
-      
-      //cout << "Gen tile " << x_tile << ", " << y_tile << " zoom " << zoom << endl; 
-      
-      dcube<unsigned char> png_data(ts[0],ts[1],4);
-      png_data.set_all(0);
-      
-      float scale_factor;
-      
-      //int* dims=last_image.dims;
-      
-      int longest_dim=0;
-      if(dims[1]>dims[0]) longest_dim=1;
-      
-      //cout << "OK" << endl;  
-      //longest_dim=0;
-      
-      scale_factor=dims[longest_dim]*1.0/png_data.dims[longest_dim];
-      for(int z=0;z<zoom;z++) scale_factor/=2.0;
-      
-      //  cout << "Fits data :  " << img_hdu_dims.dim << " dimensions : ";
-      // for(int d=0;d<img_hdu_dims.dim;d++) cout << img_hdu_dims[d] << ", ";
-      // cout << endl;
-      
-    
-      vec<float> tmpcol(4);
-      int fpix[2];
-      float value;
-
-      for(int y=0;y<png_data.dims[1];y++)
-	for(int x=0;x<png_data.dims[0];x++){
-	  
-	  fpix[0]=(x_tile*png_data.dims[0]+x)*scale_factor;
-	  fpix[1]=(y_tile*png_data.dims[1]+y)*scale_factor;
-	  
-	  if(fpix[0]<0 || fpix[0]>=dims[0]
-	     || fpix[1]<0 || fpix[1]>=dims[1]
-	     ) value=cuts[1];
-	  
-	  else{
-	    value = (float) (*this)(fpix[1],fpix[0]);
-	    //fits_read_pix(f, TFLOAT, fpix.c, 1,&nulv,&value, &anynul, &fstat);
-	    //report_fits_error();
-	  }
-	  
-	  //value-=cuts[0];
-	  
-	  //      cout << "Getting colors cmd=" << scaled_cmap.dim << endl;
-	  scaled_cmap.get_color(value, tmpcol);
-	  
-	  // value=(value-cuts[0])/(cuts[1]-cuts[0])*255.0; 
-	  
-	  // if(value<0) value=0;
-	  // if(value>255) value=255;
-	  //cout << "Color : ";
-	  for(int c=0;c<4;c++) png_data(y,x,c)=(unsigned char) (tmpcol[c]*255.0);
-	  
-	  // png_data(y,x,0)=(unsigned char) (value);
-	  // png_data(y,x,1)=(unsigned char) (value);
-	  // png_data(y,x,2)=(unsigned char) (value);
-	  // png_data(y,x,3)=255;
-	}
-      
-      size_t stream_size;
-      char* stream_data;
-      FILE * fst = open_memstream(&stream_data, &stream_size);
-      write_png_file(fst, png_data);
-      fclose(fst);
-      
-      // POSSIBLE MEM LEAK ? Does v8::Buffer frees itself its mem content ?? 
-      
-      //  Buffer* bp =Buffer::New(stream_data, stream_size, free_stream_buffer, NULL)
-      Buffer* bp =Buffer::New(stream_data, stream_size, free_stream_buffer, NULL);
-      Handle<Buffer> hbp(bp);
-      
-      //  Handle<Buffer> bp = Buffer::New(stream_size);
-      //memcpy(bp->data(), stream_data, stream_size);
-      //  free(stream_data);
-      return hbp;
-    }
 
     static Handle<Value> swapx(const Arguments& args) {
       jsmat<T>* obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
@@ -632,7 +644,7 @@ namespace sadira{
     static Handle<Value> gen_histogram(const Arguments& args) {
       
       jsmat<T>& imgdata = *ObjectWrap::Unwrap<jsmat<T> >(args.This());
-      //cout << "gen histo for " << obj->file_name << endl;
+      cout << "gen histogram...." << endl;
       
       HandleScope scope;
       
@@ -666,7 +678,7 @@ namespace sadira{
       
       int nbins=nbins_value->IsUndefined() ? 200 :  nbins_value->Value();
       
-      MINFO << "Cuts " << cuts[0] << ", " << cuts[1] << " nbins = " << nbins << endl;
+      //MINFO << "Cuts " << cuts[0] << ", " << cuts[1] << " nbins = " << nbins << endl;
       //      args[0]->ToNumber()->Value();
       double low= cuts[0];
       double max= cuts[1];

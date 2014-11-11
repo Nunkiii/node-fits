@@ -10,8 +10,7 @@
 #include <string>
 #include <fitsio.h>
 
-#include <colormap/colormap_interface.hh>
-
+//#include <qk/colormap.hh>
 #include <math/jsmat.hh>
 #include <math/jsvec.hh>
 
@@ -21,7 +20,7 @@ namespace sadira{
   using namespace v8;
   using namespace qk;
   
-  class fits : public colormap_interface { //node::ObjectWrap {
+  class fits : public node::ObjectWrap {
 
   public:
 
