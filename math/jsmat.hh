@@ -36,9 +36,7 @@ namespace sadira{
     static Persistent<Function> constructor;
     
     static void init(Handle<Object> target, const char* class_name){
-
-
-      cout << "Configuring " << class_name << "...."<<endl;
+      //cout << "Configuring " << class_name << "...."<<endl;
 
       Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
       

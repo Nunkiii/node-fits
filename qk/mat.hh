@@ -82,7 +82,7 @@ namespace qk{
     ///\param _ms : The matrix to copy data from. 
 
     const mat<T> & operator = (const mat<T> & ms){
-      cout << "OP EQUAL!"<<endl;
+      //cout << "OP EQUAL!"<<endl;
       if (this != &ms){
 	dims[0] = ms.dims[0];
 	dims[1] = ms.dims[1];      
