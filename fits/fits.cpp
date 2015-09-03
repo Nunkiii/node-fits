@@ -514,18 +514,40 @@ namespace sadira{
     
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
     //    obj->file_name=obj->get_file_name(args);
-    obj->check_file_is_open(args);
 
-    return scope.Close(obj->get_table_column(args[0]->NumberValue(), args[1]->NumberValue()));
+
+    v8::Local<v8::Function> cb=Local<Function>::Cast(args[1]);
+
+    try{
+      obj->check_file_is_open(args);
+
+      v8::Handle<v8::Object> column=obj->get_table_column(args[0]->NumberValue());
+      
+      //return scope.Close(obj->get_table_columns(args[0]->NumberValue()));
+      
+      const unsigned argc = 2;
+      Handle<Value> argv[argc] = { Undefined(), column };
+      cb->Call(Context::GetCurrent()->Global(), argc, argv );    
+    }
+
+    catch (qk::exception &e){
+
+      const unsigned argc = 2;
+      
+      Handle<Value> argv[argc] = { String::New(e.mess.c_str()), Undefined() };
+      cb->Call(Context::GetCurrent()->Global(), argc, argv );    
+    }
+
+    return scope.Close(args.This());
   }
   
-  Handle<Object> fits::get_table_column(int hdu_id, int column_id){
+  Handle<Object> fits::get_table_column(int column_id){
 
     v8::Handle<v8::Object> result_object = v8::Object::New();
     
         
     column_id++;
-    hdu_id++;
+    //    hdu_id++;
     
     try{
 
@@ -533,7 +555,7 @@ namespace sadira{
 
       int hdutype;
 
-      fits_movabs_hdu(f, hdu_id, NULL, &fstat); report_fits_error();    
+      //      fits_movabs_hdu(f, hdu_id, NULL, &fstat); report_fits_error();    
       fits_get_hdu_type(f, &hdutype, &fstat); report_fits_error();
       
 
@@ -616,7 +638,7 @@ namespace sadira{
       obj->check_file_is_open(args);
 
       //obj->file_name=obj->get_file_name(args);
-      v8::Handle<v8::Object> columns=obj->get_table_columns(args[0]->NumberValue());
+      v8::Handle<v8::Object> columns=obj->get_table_columns();
     
       //return scope.Close(obj->get_table_columns(args[0]->NumberValue()));
 
@@ -748,11 +770,11 @@ namespace sadira{
     return scope.Close(args.This());
   }
   
-  Handle<Object> fits::get_table_columns(int hdu_id){
+  Handle<Object> fits::get_table_columns(){
     
     v8::Handle<v8::Object> result_object = v8::Object::New();
 
-    hdu_id++;
+    // hdu_id++;
     
     try{
 
@@ -760,7 +782,8 @@ namespace sadira{
 
       int hdutype;
 
-      fits_movabs_hdu(f, hdu_id, NULL, &fstat); report_fits_error();    
+      //fits_movabs_hdu(f, hdu_id, NULL, &fstat); report_fits_error();    
+
       fits_get_hdu_type(f, &hdutype, &fstat); report_fits_error();
       
 

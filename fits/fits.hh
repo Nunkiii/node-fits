@@ -67,12 +67,12 @@ namespace sadira{
     
     static Handle<Value> set_hdu(const Arguments& args);
 
-    Handle<Object> get_table_column(int hdu_id, int column_id);
+    Handle<Object> get_table_column(int column_id);
     static Handle<Value> get_table_column(const Arguments& args);
 
 
     static Handle<Value> get_table_columns(const Arguments& args);
-    Handle<Object> get_table_columns(int hdu_id);
+    Handle<Object> get_table_columns();
     
     void report_fits_error();
 
