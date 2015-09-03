@@ -636,7 +636,7 @@ namespace sadira{
 	v8::Local<v8::Array> row_data = v8::Array::New();
 	result_object->Set(Number::New(jj-1),row_data);
 	
-	cout << "w= "<< width<<"Read row " << jj << endl;
+	//cout << "w= "<< width<<"Read row " << jj << endl;
 	//for(int k=0;k<width+8;k++) cell_data[k]=0;
 	//cout << "Read row " << jj << " cell data " << cell_data <<  endl;
 	for(int column_id=0;column_id<ncols;column_id++){
