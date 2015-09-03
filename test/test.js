@@ -1,12 +1,13 @@
 /*
 
-  node-fits test file. WB: Pierre Sprimont <nunki@unseen.it>
+  node-fits test file. Written by: Pierre Sprimont <sprimont@iasfbo.inaf.it>
 
 */
 
 var file_name="example.fits"; //or, more usefull: var file_name=process.argv[2]; 
 
 //Including the fits plugin. The path must point to a compiled node-fits plugin.
+
 var fits=require("../build/Release/fits"); 
 
 //Shows all the new JS 'classes' available to the user :
@@ -15,8 +16,8 @@ console.log("New objects available : ");for (var fm in fits) console.log("\t-> "
 var f = new fits.file(file_name); //The file is automatically opened (for reading) if the file name is specified on constructor.
 
 var iii=new fits.mat_ushort();
-console.log("zero = "+iii.width());
-for (var p in iii) console.log("IMPROP : " + p);
+//console.log("zero = "+iii.width());
+//for (var p in iii) console.log("IMPROP : " + p);
 console.log("matrix OK");
 
 /*
@@ -40,7 +41,7 @@ f.get_headers(function(error, headers){
 	return;
     }
     
-    //console.log("FITS Headers : " + JSON.stringify(headers,null,5));
+    console.log("FITS Headers : " + JSON.stringify(headers,null,5));
 
     
     //Reading an image as an arraybuffer of floats (4bytes/pixel). The returned image is another JS imported C++ class representing 2D data organised by rows: jsmat class. 
@@ -62,7 +63,7 @@ f.get_headers(function(error, headers){
 	    console.log("Image size : " + image.width() + " X " + image.height()); 
 	    
 	    var colormap=[ [0,0,0,1,0], [1,0,1,1,.8], [1,.2,.2,1,.9], [1,1,1,1,1] ];
-	    var cuts=[0,200];
+	    var cuts=[20,1500];
 	    
 	    image.set_colormap(colormap);
 	    image.set_cuts(cuts);
@@ -98,7 +99,9 @@ f.get_headers(function(error, headers){
 	    
 	    var ab=image.get_data();
 	    console.log("Image [" + image.width() + ", " +  image.height()+ " ] number of bytes " + ab.length);
-	    
+
+            console.log("First pix is " + ab[0]);
+      
 	    //... do what you want with the pixels ...
 	}
 	

@@ -609,11 +609,33 @@ namespace sadira{
     }
     
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
-    obj->check_file_is_open(args);
 
-    //obj->file_name=obj->get_file_name(args);
+    v8::Local<v8::Function> cb=Local<Function>::Cast(args[0]);
+
+    try{
+      obj->check_file_is_open(args);
+
+      //obj->file_name=obj->get_file_name(args);
+      v8::Handle<v8::Object> columns=obj->get_table_columns(args[0]->NumberValue());
     
-    return scope.Close(obj->get_table_columns(args[0]->NumberValue()));
+      //return scope.Close(obj->get_table_columns(args[0]->NumberValue()));
+
+      const unsigned argc = 2;
+      Handle<Value> argv[argc] = { Undefined(), columns };
+      cb->Call(Context::GetCurrent()->Global(), argc, argv );    
+    }
+
+    catch (qk::exception &e){
+
+      const unsigned argc = 2;
+      
+      Handle<Value> argv[argc] = { String::New(e.mess.c_str()), Undefined() };
+      cb->Call(Context::GetCurrent()->Global(), argc, argv );    
+    }
+
+    return scope.Close(args.This());
+
+    
   }
 
 
