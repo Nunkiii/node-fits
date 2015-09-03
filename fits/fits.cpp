@@ -587,12 +587,20 @@ namespace sadira{
       if(col_type == TSTRING){
 	result_object->Set(String::New("type"),String::New("text"));
 	
-	char cell_data[width+8];
+	char* cell_data = new char[width+8];
+	char null_data[width+8];
+	for(int k=0;k<width+8;k++) null_data[k]=0;
+	
 	for (jj = 1; jj <= nrows && !fstat; jj++) {
-	  
-	  fits_read_col(f,TSTRING,column_id,jj,1,1,(char*)"NullFitsCell", cell_data, &anynul, &fstat);report_fits_error(); 
+	  //cout << "w= "<< width<<"Read row " << jj << endl;
+	  //for(int k=0;k<width+8;k++) cell_data[k]=0;
+	  //cout << "Read row " << jj << " cell data " << cell_data <<  endl;
+	  fits_read_col(f,TSTRING,column_id,jj,1,1,&null_data, &cell_data, &anynul, &fstat);
+	  report_fits_error(); 
+	  //cout << " Read string ["<< cell_data <<"]" << endl; 
 	  column_data->Set(Number::New(jj-1),String::New(cell_data));
 	}
+	delete[] cell_data;
       }
       else{
 
@@ -805,15 +813,15 @@ namespace sadira{
       
       result_object->Set(String::New("nrows"),Number::New(nrows));
       v8::Local<v8::Array> columns = v8::Array::New();
-
+      
       result_object->Set(String::New("columns"),columns);
-
+      
       for(column_id=1; column_id<=ncols; column_id++){
 	
 	sprintf(column_id_s,"%d",column_id);
-
+	
 	v8::Handle<v8::Object> col_object = v8::Object::New();
-
+	
 	fits_get_coltype(f,column_id, &col_type,&repeat,&width, &fstat);report_fits_error(); 
 	fits_get_colname(f,CASEINSEN,column_id_s,column_name, &another_column_id, &fstat);report_fits_error(); 
 	
