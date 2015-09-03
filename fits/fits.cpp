@@ -540,7 +540,130 @@ namespace sadira{
 
     return scope.Close(args.This());
   }
-  
+
+
+  Handle<Value> fits::get_table_data(const v8::Arguments& args){
+      
+    v8::HandleScope scope;
+
+    if (args.Length() < 1) {
+      ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
+      return scope.Close(Undefined());
+    }
+    
+    fits* obj = ObjectWrap::Unwrap<fits>(args.This());
+
+    v8::Local<v8::Function> cb=Local<Function>::Cast(args[0]);
+
+    try{
+      obj->check_file_is_open(args);
+
+      //obj->file_name=obj->get_file_name(args);
+      v8::Handle<v8::Array> columns=obj->get_table_data();
+    
+      //return scope.Close(obj->get_table_columns(args[0]->NumberValue()));
+      //      cout << "DONE datal = " <<endl;
+      const unsigned argc = 2;
+      Handle<Value> argv[argc] = { Undefined(), columns };
+      cb->Call(Context::GetCurrent()->Global(), argc, argv );    
+    }
+
+    catch (qk::exception &e){
+
+      const unsigned argc = 2;
+      
+      Handle<Value> argv[argc] = { String::New(e.mess.c_str()), Undefined() };
+      cb->Call(Context::GetCurrent()->Global(), argc, argv );    
+    }
+
+    return scope.Close(args.This());
+    
+  }
+
+
+  Handle<Array> fits::get_table_data(){
+
+    v8::Handle<v8::Array> result_object = v8::Array::New();
+    
+    try{
+      
+      //open_file();
+      
+      int hdutype;
+
+      //      fits_movabs_hdu(f, hdu_id, NULL, &fstat); report_fits_error();    
+      fits_get_hdu_type(f, &hdutype, &fstat); report_fits_error();
+      
+
+      if(hdutype == IMAGE_HDU){
+	throw qk::exception("The extension is not a table");
+      }
+      
+      long nrows; int ncols;
+
+      fits_get_num_rows(f, &nrows, &fstat);report_fits_error(); 
+      fits_get_num_cols(f, &ncols, &fstat);report_fits_error();
+      
+      char column_name[ncols][128];
+      char column_id_s[32];
+      int another_column_id;
+      
+      int col_type[ncols];
+      long repeat,width=0;
+      int anynul=0,jj;
+
+      for(int k=1;k<ncols+1;k++){
+	sprintf(column_id_s,"%d",k);
+	long w;
+	fits_get_coltype(f,k, &col_type[k-1],&repeat,&w, &fstat);report_fits_error();
+	if(w>width) width=w;
+	fits_get_colname(f,CASEINSEN,column_id_s,column_name[k-1], &another_column_id, &fstat);report_fits_error(); 
+	cout << "COL " << k << " : w = " << w << endl; 
+      }
+      
+      
+
+      char* cell_data = new char[width+8];
+      char null_data[width+8];
+      for(int k=0;k<width+8;k++) null_data[k]=0;
+      double x, nulval=-9999;
+      
+      //result_object->Set(String::New("name"),String::New(column_name));
+      //result_object->Set(String::New("type"),String::New("text"));
+	
+      for (jj = 1; jj <= nrows && !fstat; jj++) {
+	
+	v8::Local<v8::Array> row_data = v8::Array::New();
+	result_object->Set(Number::New(jj-1),row_data);
+	
+	cout << "w= "<< width<<"Read row " << jj << endl;
+	//for(int k=0;k<width+8;k++) cell_data[k]=0;
+	//cout << "Read row " << jj << " cell data " << cell_data <<  endl;
+	for(int column_id=0;column_id<ncols;column_id++){
+	  if(col_type[column_id] == TSTRING){
+	    fits_read_col(f,TSTRING,column_id+1,jj,1,1,&null_data, &cell_data, &anynul, &fstat);
+	    report_fits_error(); 
+	    //cout << " Read string ["<< cell_data <<"]" << endl; 
+	    row_data->Set(Number::New(column_id),String::New(cell_data));
+	  }else{
+	    fits_read_col(f,TDOUBLE,column_id+1,jj,1,1,&nulval,&x, &anynul, &fstat);report_fits_error(); 
+	    row_data->Set(Number::New(column_id),Number::New(x));
+	  }
+	  
+	}
+      }
+
+      delete[] cell_data;
+    }
+    
+    catch (qk::exception& e){
+      v8::ThrowException(v8::String::New(e.mess.c_str()));
+    }
+
+    return result_object;
+
+  }
+    
   Handle<Object> fits::get_table_column(int column_id){
 
     v8::Handle<v8::Object> result_object = v8::Object::New();
@@ -867,6 +990,7 @@ namespace sadira{
     NODE_SET_PROTOTYPE_METHOD(s_ctf, "set_file",set_file);
     NODE_SET_PROTOTYPE_METHOD(s_ctf, "get_table_column",get_table_column);
     NODE_SET_PROTOTYPE_METHOD(s_ctf, "get_table_columns",get_table_columns);
+    NODE_SET_PROTOTYPE_METHOD(s_ctf, "get_table_data",get_table_data);
     NODE_SET_PROTOTYPE_METHOD(s_ctf, "write_image_hdu",write_image_hdu);
     NODE_SET_PROTOTYPE_METHOD(s_ctf, "read_image_hdu",read_image_hdu);
 

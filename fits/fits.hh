@@ -73,6 +73,9 @@ namespace sadira{
 
     static Handle<Value> get_table_columns(const Arguments& args);
     Handle<Object> get_table_columns();
+
+    static Handle<Value> get_table_data(const Arguments& args);
+    Handle<Array> get_table_data();
     
     void report_fits_error();
 
