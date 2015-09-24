@@ -663,7 +663,9 @@ namespace sadira{
     return result_object;
 
   }
-    
+
+
+  
   Handle<Object> fits::get_table_column(int column_id){
 
     v8::Handle<v8::Object> result_object = v8::Object::New();
@@ -686,7 +688,7 @@ namespace sadira{
 	throw qk::exception("The extension is not a table");
       }
       
-      long nrows; int ncols;
+      long int nrows; int ncols;
 
       fits_get_num_rows(f, &nrows, &fstat);report_fits_error(); 
       fits_get_num_cols(f, &ncols, &fstat);report_fits_error();
@@ -718,6 +720,7 @@ namespace sadira{
 	  //cout << "w= "<< width<<"Read row " << jj << endl;
 	  //for(int k=0;k<width+8;k++) cell_data[k]=0;
 	  //cout << "Read row " << jj << " cell data " << cell_data <<  endl;
+
 	  fits_read_col(f,TSTRING,column_id,jj,1,1,&null_data, &cell_data, &anynul, &fstat);
 	  report_fits_error(); 
 	  //cout << " Read string ["<< cell_data <<"]" << endl; 
@@ -727,14 +730,30 @@ namespace sadira{
       }
       else{
 
-	result_object->Set(String::New("type"),String::New("numerical"));
-	
-	double x, nulval=-9999;
-	for (jj = 1; jj <= nrows && !fstat; jj++) {
 
-	  fits_read_col(f,TDOUBLE,column_id,jj,1,1,&nulval,&x, &anynul, &fstat);report_fits_error(); 
-	  column_data->Set(Number::New(jj-1),Number::New(x));
+	Local<v8::Float32Array> lfa = Float32Array::New(ArrayBuffer::New(Isolate::GetCurrent(), nrows), 0, nrows);
+	
+
+	result_object->Set(String::New("type"),String::New("numerical"));
+	cout << "Alloc memory ...  " << nrows << endl;
+
+	qk::mem<double> x(nrows);
+	double nulval=-9999;	
+
+	cout << "Reading fits ...  " << x.dim << endl;
+	fits_read_col(f,TDOUBLE,column_id,1,1,nrows,&nulval,x.c, &anynul, &fstat);
+
+	report_fits_error();
+
+
+	
+	cout << "Copy into JS array...  " << x.dim << endl;
+	
+	for (jj = 0; jj < nrows; jj++) {
+	  //fits_read_col(f,TDOUBLE,column_id,jj,1,1,&nulval,&x, &anynul, &fstat);report_fits_error(); 
+	  column_data->Set(Number::New(jj),Number::New(x[jj]));
 	}
+	cout << "Copy JS array done!  " << x.dim << endl;
       }
 
 
@@ -763,13 +782,39 @@ namespace sadira{
     
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
 
-    v8::Local<v8::Function> cb=Local<Function>::Cast(args[0]);
+    Local<Value> options(args[0]);
+    Local<Value> callback(args[1]);
 
+    if (callback->IsUndefined()) {
+      if (options->IsFunction()) {
+	callback = options;
+	options = Object::New();
+      }
+    }
+
+    Local<Function> cb;
+    Local<Object> opts;
+    cb=Local<Function>::Cast(callback);
+    opts=Local<Object>::Cast(options);
+
+    Local<Value> extract_type = opts->Get(String::New("type"));
+    int etype=0;
+    
+    if(!extract_type->IsUndefined()){
+      Local<String> in_etype = Local<String>::Cast(extract_type);
+      if(strcmp(*String::Utf8Value(in_etype),"hash")==0){
+	//cout << "Got hash option!"<< endl;
+	etype=1;
+      }
+    }
+      
+    
     try{
       obj->check_file_is_open(args);
 
       //obj->file_name=obj->get_file_name(args);
-      v8::Handle<v8::Object> columns=obj->get_table_columns();
+
+      v8::Handle<v8::Object> columns= etype ? obj->get_table_columns_hash() : obj->get_table_columns();
     
       //return scope.Close(obj->get_table_columns(args[0]->NumberValue()));
 
@@ -787,7 +832,6 @@ namespace sadira{
     }
 
     return scope.Close(args.This());
-
     
   }
 
@@ -972,6 +1016,80 @@ namespace sadira{
 
   }
 
+  Handle<Object> fits::get_table_columns_hash(){
+    
+    v8::Handle<v8::Object> result_object = v8::Object::New();
+
+    // hdu_id++;
+    
+    try{
+
+      //open_file();
+
+      int hdutype;
+
+      //fits_movabs_hdu(f, hdu_id, NULL, &fstat); report_fits_error();    
+
+      fits_get_hdu_type(f, &hdutype, &fstat); report_fits_error();
+      
+
+      if(hdutype == IMAGE_HDU){
+	throw qk::exception("The extension is not a table");
+      }
+      
+      long nrows; int ncols;
+
+      fits_get_num_rows(f, &nrows, &fstat);report_fits_error(); 
+      fits_get_num_cols(f, &ncols, &fstat);report_fits_error();
+
+      char column_name[128];
+      char column_id_s[32]; 
+      int another_column_id;
+      
+      int col_type, column_id;
+      long repeat,width;
+      
+      result_object->Set(String::New("nrows"),Number::New(nrows));
+      v8::Local<v8::Object> columns = v8::Object::New();
+      
+      result_object->Set(String::New("columns"),columns);
+      
+      for(column_id=1; column_id<=ncols; column_id++){
+	
+	sprintf(column_id_s,"%d",column_id);
+	
+	v8::Handle<v8::Object> col_object = v8::Object::New();
+	
+	fits_get_coltype(f,column_id, &col_type,&repeat,&width, &fstat);report_fits_error(); 
+	fits_get_colname(f,CASEINSEN,column_id_s,column_name, &another_column_id, &fstat);report_fits_error(); 
+
+	col_object->Set(String::New("id"),Number::New(column_id-1));
+	col_object->Set(String::New("name"),String::New(column_name));
+	col_object->Set(String::New("width"),Number::New(width));
+	
+	if(col_type == TSTRING){
+	  col_object->Set(String::New("type"),String::New("text"));
+	}
+	else{
+	  col_object->Set(String::New("type"),String::New("numerical"));
+	}
+
+	columns->Set(String::New(column_name),col_object);
+      }
+      
+      close_file();
+    }
+    
+    catch (qk::exception& e){
+      v8::ThrowException(v8::String::New(e.mess.c_str()));
+    }
+
+    return result_object;
+
+  }
+
+
+  
   void fits::Init(Handle<Object> target) {
     // Prepare constructor template
 

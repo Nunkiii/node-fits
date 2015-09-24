@@ -46,7 +46,7 @@ namespace sadira{
     jsvec (int _d=0)  
       :vec<T>(_d)
     {
-      cout << "New vecrix "<< this <<" D="<<_d<<endl;
+      //cout << "New vecrix "<< this <<" D="<<_d<<endl;
     }    
 
     // jsvec (const vec<T> & m){
@@ -67,8 +67,8 @@ namespace sadira{
       args.This()->Set(String::NewSymbol("id"), Number::New(12345));
       return args.This();
     }
-
-
+    
+  public : 
     static v8::Handle<v8::Value> length(const v8::Arguments& args) {
     
       v8::HandleScope scope;
@@ -80,8 +80,8 @@ namespace sadira{
       jsvec* obj = NULL;
       obj = ObjectWrap::Unwrap<jsvec>(args.This());
       
-      cout << "Unwrapped VEC... ptr" << obj <<endl;
-      obj->redim(obj->dim+1);
+      //cout << "Unwrapped VEC... ptr" << obj <<endl;
+      //obj->redim(obj->dim+1);
       //      cout << "OBJ= "<< obj <<" D="<<obj->dim<<endl;
       //obj->redim(5);
       //      cout << "NEWOBD ="<<obj->dim<<endl;

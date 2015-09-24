@@ -5,6 +5,7 @@
 #include <node_buffer.h>
 
 #include <qk/mat.hh>
+#include <math/jsvec.hh>
 #include <qk/pngwriter.hh>
 #include <qk/jpeg_writer.hh>
 #include <qk/dcube.hh>
@@ -62,6 +63,7 @@ namespace sadira{
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "set_colormap", set_colormap);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "set_cuts", set_cuts);
       NODE_SET_PROTOTYPE_METHOD(s_ctm, "set_cuts_histo", set_cuts_histo);
+      NODE_SET_PROTOTYPE_METHOD(s_ctm, "length",jsvec<T>::length);
       
       target->Set(String::NewSymbol(class_name), s_ctm->GetFunction());
       constructor = Persistent<Function>::New(tpl->GetFunction());
@@ -578,10 +580,10 @@ namespace sadira{
       
       // Buffer:Data gives us a yummy void* pointer to play with to our hearts
       // content.
+      float* b=(float*)node::Buffer::Data(slowBuffer);
       
       for(int i=0;i<obj->dim;i++){
 	float v=(float) obj->c[i];
-	float* b=(float*)node::Buffer::Data(slowBuffer);
 	memcpy(b+i, &v, 4);
       }
       

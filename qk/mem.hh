@@ -103,7 +103,7 @@ namespace qk{
       if(_dim==0) return;
       
       if ( _dim<0){
-	MERROR << "Negative dimension! (asked for "<< _dim*sizeof(T)<< " bytes.)" << endl; 
+	MERROR << "Negative dimension! D="<<_dim<<" size "<<sizeof(T)<< " : "<< _dim*sizeof(T)<< " bytes requested." << endl; 
 	throw exception("Negative dimension");    
       }
 
