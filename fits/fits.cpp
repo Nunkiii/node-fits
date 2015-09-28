@@ -504,6 +504,8 @@ namespace sadira{
 
   Handle<Value> fits::get_table_column(const v8::Arguments& args){
     
+    cout << "Get table column " <<  endl;
+
     v8::HandleScope scope;
     
 
@@ -670,7 +672,6 @@ namespace sadira{
 
     v8::Handle<v8::Object> result_object = v8::Object::New();
     
-        
     column_id++;
     //    hdu_id++;
     
@@ -731,7 +732,7 @@ namespace sadira{
       else{
 
 
-	Local<v8::Float32Array> lfa = Float32Array::New(ArrayBuffer::New(Isolate::GetCurrent(), nrows), 0, nrows);
+	//Local<v8::Float32Array> lfa = Float32Array::New(ArrayBuffer::New(Isolate::GetCurrent(), nrows), 0, nrows);
 	
 
 	result_object->Set(String::New("type"),String::New("numerical"));
