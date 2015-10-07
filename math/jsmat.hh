@@ -1,9 +1,6 @@
 #ifndef __JSMAT_HH__
 #define __JSMAT_HH__
 
-#include <node.h>
-#include <node_buffer.h>
-
 #include <qk/mat.hh>
 #include <math/jsvec.hh>
 #include <qk/pngwriter.hh>
@@ -13,6 +10,7 @@
 
 #ifdef __APPLE__
 #ifdef __cplusplus
+
 extern "C" {
 FILE * open_memstream (char **buf, size_t *len);
 FILE *fmemopen(void *buf, size_t size, const char *mode);
@@ -31,43 +29,38 @@ namespace sadira{
   
   template <typename T> class jsmat 
     : public ObjectWrap, public mat<T> {
+
   public:
-    
-    static Persistent<FunctionTemplate> s_ctm;    
+
     static Persistent<Function> constructor;
-    
-    static void init(Handle<Object> target, const char* class_name){
-      //cout << "Configuring " << class_name << "...."<<endl;
 
-      Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
+    static void init(Local<Object> exports, const char* class_name){
+      Isolate* isolate = exports->GetIsolate();
       
-      s_ctm = Persistent<FunctionTemplate>::New(tpl);
-      //s_ctm->Inherit(colormap_interface::s_ct); 
+      Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
       
-      s_ctm->InstanceTemplate()->SetInternalFieldCount(11);
-      s_ctm->SetClassName(String::NewSymbol(class_name));
+      tpl->SetClassName(String::NewFromUtf8(isolate,class_name));
+      tpl->InstanceTemplate()->SetInternalFieldCount(11);
+      
+      NODE_SET_PROTOTYPE_METHOD(tpl, "length",length);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "width",width);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "height",height);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "resize",resize);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "crop",crop);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "copy",copy);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "extend",extend);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "swapx",swapx);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "swapy",swapy);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "set_colormap", set_colormap);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "set_cuts", set_cuts);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "set_cuts_histo", set_cuts_histo);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "histogram", gen_histogram);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "get_data", get_data);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "tile",tile);
 
-      //colormap_interface::init_interface(s_ctm);
 
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "histogram", gen_histogram);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "get_data", get_data);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "tile",tile);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "width",width);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "height",height);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "resize",resize);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "crop",crop);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "copy",copy);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "extend",extend);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "swapx",swapx);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "swapy",swapy);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "set_colormap", set_colormap);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "set_cuts", set_cuts);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "set_cuts_histo", set_cuts_histo);
-      NODE_SET_PROTOTYPE_METHOD(s_ctm, "length",jsvec<T>::length);
-      
-      target->Set(String::NewSymbol(class_name), s_ctm->GetFunction());
-      constructor = Persistent<Function>::New(tpl->GetFunction());
-      
+      constructor.Reset(isolate, tpl->GetFunction());
+      exports->Set(String::NewFromUtf8(isolate, class_name),tpl->GetFunction());
     }
     
     qk::colormap<float> cmap;
@@ -76,31 +69,36 @@ namespace sadira{
     
   private:
 
-    static Handle<Value> New(const Arguments& args) {
-      HandleScope scope;
-      int d0=0,d1=0;
+    static void New(const v8::FunctionCallbackInfo<v8::Value>& args) {
       
-      if (args.Length() >=2) {
-	d0=args[0]->ToNumber()->Value();
-	d1=args[1]->ToNumber()->Value();
+      Isolate* isolate = args.GetIsolate();
+
+      if (args.IsConstructCall()) {
+	// Invoked as constructor: `new MyObject(...)`
+	int d0= (int) args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
+	int d1= (int) args[1]->IsUndefined() ? 0 : args[1]->NumberValue();
+	jsmat* obj = new jsmat(d0,d1);
+	obj->Wrap(args.This());
+	args.GetReturnValue().Set(args.This());
+      } else {
+	// Invoked as plain function `MyObject(...)`, turn into construct call.
+	const int argc = 2;
+	Local<Value> argv[argc] = { args[0], args[1] };
+	Local<Function> cons = Local<Function>::New(isolate, constructor);
+	args.GetReturnValue().Set(cons->NewInstance(argc, argv));
       }
-
-      jsmat<T>* obj = new jsmat<T>(d0,d1);
-      obj->Wrap(args.This());
-
-      //args.This()->Set(String::NewSymbol("id"), Number::New(12345));
-      return args.This();
+      
     }
-    
 
   public:
-
-    jsmat (int _d0=0, int _d1=0)  
+    explicit jsmat (int _d0=0, int _d1=0)  
       :mat<T>(_d0,_d1){
       //cout << "New matrix "<< this <<" D="<<dims[0]<<"," << dims[1] << " D="<< dim << " datap="<< ((void*)data_pointer()) << endl;
     }    
     jsmat (const jsmat<T> & m):mat<T>(m){}   
-    
+
+  public:
+
     virtual ~jsmat(){}
 
     using cnt::dim;
@@ -109,104 +107,88 @@ namespace sadira{
     using mat<T>::redim;
     using mat<T>::operator=;
     
-
     const jsmat<T>& operator=(const jsmat<T>& m){
       mat<T>::operator=(m);
       return *this;
     }
 
-
-
-    static Handle<Value> Instantiate(int d0=0, int d1=0) {
-      HandleScope scope;
-      int argc=0;
-      Local<v8::Value> argv[2];
-
-      //cout << "Inst new matrix " << d0 << ", " << d1 << endl;
+    static void NewInstance(const v8::FunctionCallbackInfo<v8::Value>& args){
+      Isolate* isolate = args.GetIsolate();
       
-      if(d0>0 || d1>0){
-	argv[0]=Local<v8::Value>::New(Number::New(d0));
-	argv[1]=Local<v8::Value>::New(Number::New(d1));
-	argc=2;
-      }
-      
-      return scope.Close(constructor->NewInstance(argc,argv));
+      const unsigned argc = 2;
+      Local<Value> argv[argc] = { args[0], args[1] };
+      Local<Function> cons = Local<Function>::New(isolate, constructor);
+      Local<Object> instance = cons->NewInstance(argc, argv);
+
+      args.GetReturnValue().Set(instance);
     }
-    
-    /*
-    static Handle<Value> Instantiate(mat<T>& m) {
-      HandleScope scope;
-
-      Local<v8::Value> argv[1] = {
-        Local<v8::Value>::New(String::New(name.c_str()))
-      };
-
-      return scope.Close(constructor->NewInstance(m));
-    }
-    */
-
 
     
-    static Handle<Value> set_cuts_histo(const Arguments& args){
-      return args.This();
+    static void length(const FunctionCallbackInfo<Value>& args) {
+
+      Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
+
+      args.GetReturnValue().Set(Number::New(isolate, obj->dim));
     }
+
+    static void set_cuts_histo(const v8::FunctionCallbackInfo<v8::Value>& args){}
     
-    static Handle<Value> set_cuts(const Arguments& args){
-      
-      HandleScope scope;
+    static void set_cuts(const v8::FunctionCallbackInfo<v8::Value>& args){
+
+      Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
       
       if (args.Length() < 1) {
-	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
-	return scope.Close(Undefined());
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong number of arguments")));
+	return;
       }
-      
-      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.This());
-      
+
+      if(! args[0]->IsArray()){
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Argument must be an Array")));
+	return;
+      }
       Handle<Array> cutsa = Handle<Array>::Cast(args[0]);
       
-      obj->cuts[0]=cutsa->Get(0)->ToNumber()->Value();
-      obj->cuts[1]=cutsa->Get(1)->ToNumber()->Value();
-      
+      obj->cuts[0]=cutsa->Get(0)->NumberValue();
+      obj->cuts[1]=cutsa->Get(1)->NumberValue();
       obj->rescale_colormap();
-      
-      return scope.Close(args.This());
-      
+
+      args.GetReturnValue().Set(args.Holder());
+
     }
     
   
     void rescale_colormap(){
-      
+
       scaled_cmap = cmap;
       
-      int ci;//,cc;
-      //  lel<colormap_value<float>*> *lcv=cmap.G;
-      
+      int ci;
+
       for(ci=0;ci<scaled_cmap.dim;ci++){
-	
-	//    for(cc=0;cc<4;cc++)scaled_cmap[ci][cc]=(unsigned char)((*(**lcv))[cc]*255);
-	
 	scaled_cmap[ci][4]*=(cuts[1]-cuts[0]);
 	scaled_cmap[ci][4]+=cuts[0];
-	
-	//lcv=lcv->d;
       }
       
     }
     
     
-    static Handle<Value> set_colormap(const Arguments& args){
-      
-      HandleScope scope;
-      
+    static void set_colormap(const v8::FunctionCallbackInfo<v8::Value>& args){
+
+      Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
+
       if (args.Length() < 1) {
-	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
-	return scope.Close(Undefined());
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,"Wrong number of arguments")));
+	return;
       }
-      
-      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.This());
-      Handle<Array> cmap_data = Handle<Array>::Cast(args[0]->ToObject());
-      
-      //  cout << "Setting colormap NC="<< cmap_data->Length() << endl;
+
+      if(! args[0]->IsArray()){
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Argument must be an Array")));
+	return;
+      }
+
+      Handle<Array> cmap_data = Handle<Array>::Cast(args[0]);
       
       obj->cmap.ttd();
       qk::colormap_value<float>* cmv;
@@ -215,96 +197,87 @@ namespace sadira{
       for(unsigned int c=0;c<ncolors;c++){
 	cmv=new qk::colormap_value<float>();
 	//  MINFO << "Reading color "<<c << endl;
-	
 	Local<Array> cmva = Local<Array>::Cast(cmap_data->Get(c));
-	
 	for(int cpn=0;cpn<5;++cpn){
 	  //  MINFO << "read " << cmap[c][cpn].asFloat() << endl;
-	  (*cmv)[cpn]=(float)cmva->Get(cpn)->ToNumber()->Value();
+	  (*cmv)[cpn]=(float)cmva->Get(cpn)->NumberValue();
 	}
 	
-	//    (*cmv)[4]*=(cuts[1]-cuts[0]);
-	// (*cmv)[4]+=cuts[0];
-	
-	//    MINFO << "Reading color "<<c << "done" << endl;
 	obj->cmap.add(cmv);
       }  
-      
-    
-      return scope.Close(args.This());
-      
+      args.GetReturnValue().Set(args.Holder());
     }
     
-    
-    
-    static v8::Handle<v8::Value> resize(const v8::Arguments& args) {
-      v8::HandleScope scope;
-      
+    static void resize(const v8::FunctionCallbackInfo<v8::Value>& args) {
+
+      Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
+
       if (args.Length() < 2) {
-	ThrowException(Exception::TypeError(String::New("You must pass width and height as parameters")));
-	return scope.Close(Undefined());
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,"You must pass width and height as parameters")));
+	return;
       }
-
-      jsmat<T>* obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
-      //cout << "OBJ= "<< obj <<" Img w="<<obj->dims[0]<<endl;
-      //MINFO << "redim matrix to " << args[0]->NumberValue() <<", " << args[1]->NumberValue() << endl;
-
+      if (!args[0]->IsNumber() || !args[1]->IsNumber()) {
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Arguments must be numbers")));
+	return;
+      }
+      
       obj->redim(args[0]->NumberValue(), args[1]->NumberValue());
-      return scope.Close(args.This());
+      args.GetReturnValue().Set(args.Holder());
     }
 
-    static v8::Handle<v8::Value> width(const v8::Arguments& args) {
-      v8::HandleScope scope;
-      jsmat<T>* obj = NULL;
-      obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
-      Handle<Value> w=Number::New(obj->dims[0]);
-      return scope.Close(w);
+    static void width(const v8::FunctionCallbackInfo<v8::Value>& args) {
+      Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
+      Local<Number> d=Number::New(isolate, obj->dims[0]);
+      args.GetReturnValue().Set(d);
     }
 
-    static v8::Handle<v8::Value> height(const v8::Arguments& args) {
-      v8::HandleScope scope;
-      jsmat<T>* obj = NULL;
-      obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
-
-      Handle<Value> w=Number::New(obj->dims[1]);
-      return scope.Close(w);
+    static void height(const v8::FunctionCallbackInfo<v8::Value>& args) {
+      Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
+      Local<Number> d=Number::New(isolate, obj->dims[1]);
+      args.GetReturnValue().Set(d);
     }
 
 
-    static v8::Handle<v8::Value> copy(const v8::Arguments& args) {
-      v8::HandleScope scope;
-      return scope.Close(Undefined());
-    }
+    static void copy(const v8::FunctionCallbackInfo<v8::Value>& args) {}
 
-    static v8::Handle<v8::Value> crop(const v8::Arguments& args) {
-      v8::HandleScope scope;
-      jsmat<T>* obj = NULL;
-      obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
+    static void crop(const v8::FunctionCallbackInfo<v8::Value>& args) {
+      Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
 
       if (args.Length() < 1) {
-	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
-	return scope.Close(Undefined());
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,"Wrong number of arguments")));
+	return;
       }
-      Local<Object> params = Local<Object>::Cast(args[0]->ToObject()); //->Get(String::New("cuts")));
+      if (!args[0]->IsObject()) {
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Argument must be an object")));
+	return;
+      }
 
+      Local<Object> params = Local<Object>::Cast(args[0]->ToObject()); //->Get(String::NewFromUtf8(isolate,"cuts")));
+      
       Handle<Value> hv; 
       rect<int> r(0,0,-1,-1);
       
-      hv=params->Get(String::NewSymbol("x")); if(hv != Undefined()) r[0]=hv->ToNumber()->Value();
-      hv=params->Get(String::NewSymbol("y")); if(hv != Undefined()) r[1]=hv->ToNumber()->Value();
-      hv=params->Get(String::NewSymbol("w")); if(hv != Undefined()) r[2]=hv->ToNumber()->Value();else r[2]=obj->dims[0]-r[0];
-      hv=params->Get(String::NewSymbol("h")); if(hv != Undefined()) r[3]=hv->ToNumber()->Value();else r[3]=obj->dims[1]-r[1];
-
-
+      hv=params->Get(String::NewFromUtf8(isolate,"x"));if(hv != Undefined(isolate)) r[0]=hv->NumberValue();
+						     
+      
+      hv=params->Get(String::NewFromUtf8(isolate,"y")); if(hv != Undefined(isolate)) r[1]=hv->NumberValue();
+      hv=params->Get(String::NewFromUtf8(isolate,"w")); if(hv != Undefined(isolate)) r[2]=hv->NumberValue();else r[2]=obj->dims[0]-r[0];
+      hv=params->Get(String::NewFromUtf8(isolate,"h")); if(hv != Undefined(isolate)) r[3]=hv->NumberValue();else r[3]=obj->dims[1]-r[1];
 
       //cout << "rect is " << r[0] << ", "<< r[1] << ", "<< r[2] << ", "<< r[3] << endl;
       
       if(obj->is_in(r)){
 	//v8::String::Utf8Value fffu(hv->ToString());
 	cout << "OK rect is inside !"<< endl;
-	if(r[2]==obj->dims[0]&&r[3]==obj->dims[1])
-	  return scope.Close(args.This());
-
+	if(r[2]==obj->dims[0]&&r[3]==obj->dims[1]){
+	  args.GetReturnValue().Set(args.Holder());
+	  return;
+	}
+	
 	jsmat<T>* cropped=new jsmat<T>(*obj);
 	obj->redim(r[2],r[3]);
 	for(int j=0;j<r[3];j++)
@@ -317,46 +290,43 @@ namespace sadira{
 	
 	
       }else{
-	ThrowException(Exception::TypeError(String::New("Invalid area for cropping")));
-	return scope.Close(Undefined());
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,"Invalid area for cropping")));
+	return;
       }
-
-
-
-      //
-      
-      return scope.Close(args.This());
+      args.GetReturnValue().Set(args.Holder());
     }
 
 
-    static v8::Handle<v8::Value> extend(const v8::Arguments& args) {
+    static void extend(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
-      //cout << "Extend !" << endl;
-      v8::HandleScope scope;
-      jsmat<T>* obj = NULL;
-      //cout << "Extend !" << endl;
-      obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
+      Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
 
       if (args.Length() < 1) {
-	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
-	return scope.Close(Undefined());
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,"Wrong number of arguments")));
+	return;
       }
       //cout << "Extend !" << endl;
-      Local<Object> params = Local<Object>::Cast(args[0]->ToObject()); //->Get(String::New("cuts")));
+      if (!args[0]->IsObject()) {
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Argument must be an object")));
+	return;
+      }
+
+      Local<Object> params = Local<Object>::Cast(args[0]->ToObject()); //->Get(String::NewFromUtf8(isolate,"cuts")));
 
       Handle<Value> hv; 
       rect<int> r(0,0,-1,-1);
       
-      hv=params->Get(String::NewSymbol("x")); if(hv != Undefined()) r[0]=hv->ToNumber()->Value();
-      hv=params->Get(String::NewSymbol("y")); if(hv != Undefined()) r[1]=hv->ToNumber()->Value();
-      hv=params->Get(String::NewSymbol("w")); if(hv != Undefined()) r[2]=hv->ToNumber()->Value();else r[2]=obj->dims[0]-r[0];
-      hv=params->Get(String::NewSymbol("h")); if(hv != Undefined()) r[3]=hv->ToNumber()->Value();else r[3]=obj->dims[1]-r[1];
+      hv=params->Get(String::NewFromUtf8(isolate,"x")); if(hv != Undefined(isolate)) r[0]=hv->NumberValue();
+      hv=params->Get(String::NewFromUtf8(isolate,"y")); if(hv != Undefined(isolate)) r[1]=hv->NumberValue();
+      hv=params->Get(String::NewFromUtf8(isolate,"w")); if(hv != Undefined(isolate)) r[2]=hv->NumberValue();else r[2]=obj->dims[0]-r[0];
+      hv=params->Get(String::NewFromUtf8(isolate,"h")); if(hv != Undefined(isolate)) r[3]=hv->NumberValue();else r[3]=obj->dims[1]-r[1];
 
       //cout << "rect is " << r[0] << ", "<< r[1] << ", "<< r[2] << ", "<< r[3] << endl;
 
       if(r[2]<=obj->dims[0] || r[3]<=obj->dims[1] ){
-	ThrowException(Exception::TypeError(String::New("Invalid area for cropping")));
-	return scope.Close(Undefined());
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,"Invalid area for cropping")));
+	return;
       }
       
       jsmat<T>* cropped=new jsmat<T>(*obj);
@@ -368,32 +338,31 @@ namespace sadira{
 	for(int i=0;i<cd[0];i++)
 	  (*obj)(j+sp[1],i+sp[0])=(*cropped)(j+r[1],i+r[0]);
       delete cropped;
-      
-      return scope.Close(args.This());
+
+      args.GetReturnValue().Set(args.Holder());
     }
 
-    static v8::Handle<v8::Value> tile(const v8::Arguments& args) {
+    static void tile(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
-      v8::HandleScope scope;
+      Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
 
       if (args.Length() < 1) {
-	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
-	return scope.Close(Undefined());
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,"Wrong number of arguments")));
+	return;
       }
-      
-      // if (!args[1]->IsFunction()) {
-      //   return ThrowException(Exception::TypeError(String::New("Second argument must be a callback function")));
-      // }
 
-      // Handle<Function> result_cb=Handle<Function>::Cast(args[1]);
-      jsmat<T>* obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
+      if (!args[0]->IsObject()) {
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Argument must be an Object")));
+	return;
+      }
       
       Handle<Array> parameters = Handle<Array>::Cast(args[0]);
 
-      Handle<Array> tile_coord = Handle<Array>::Cast(parameters->Get(String::New("tile_coord")));
-      Handle<Array> tile_size = Handle<Array>::Cast(parameters->Get(String::New("tile_size")));
-      Handle<Integer> zoom_par = Handle<Integer>::Cast(parameters->Get(String::New("zoom")));
-      Handle<String> type_par= Handle<String>::Cast(parameters->Get(String::New("type")));
+      Handle<Array> tile_coord = Handle<Array>::Cast(parameters->Get(String::NewFromUtf8(isolate,"tile_coord")));
+      Handle<Array> tile_size = Handle<Array>::Cast(parameters->Get(String::NewFromUtf8(isolate,"tile_size")));
+      Handle<Integer> zoom_par = Handle<Integer>::Cast(parameters->Get(String::NewFromUtf8(isolate,"zoom")));
+      Handle<String> type_par= Handle<String>::Cast(parameters->Get(String::NewFromUtf8(isolate,"type")));
 
       int x_tile,y_tile,zoom, ts[2];
 
@@ -503,27 +472,28 @@ namespace sadira{
 	// POSSIBLE MEM LEAK ? Does v8::Buffer frees itself its mem content ?? 
 	
 	//  Buffer* bp =Buffer::New(stream_data, stream_size, free_stream_buffer, NULL)
-	Buffer* bp =Buffer::New(stream_data, stream_size, free_stream_buffer, NULL);
-	Handle<Buffer> hbp(bp);
+	//Buffer* bp;
 	
+	MaybeLocal<Object> mbp=Buffer::New(isolate, stream_data, stream_size);
+	Local<Object> bp=mbp.ToLocalChecked();
 	
-	return scope.Close(hbp->handle_);  
+	memcpy(Buffer::Data(bp), stream_data, stream_size);
+	
+	//Handle<Buffer> hbp(bp);
+	
+	args.GetReturnValue().Set(bp);  
       }
       
       catch (qk::exception& e){
 	//    MERROR << "Failed: "<<e.mess << endl;
-	v8::ThrowException(v8::String::New(e.mess.c_str()));
+	isolate->ThrowException(v8::String::NewFromUtf8(isolate,e.mess.c_str()));
       }
-      
-      //  v8::Handle<v8::Object> result = v8::Object::New();
-      return scope.Close(Undefined());
     }
-    
-    
 
-    static Handle<Value> swapx(const Arguments& args) {
-      jsmat<T>* obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
-      HandleScope scope;
+    static void swapx(const v8::FunctionCallbackInfo<v8::Value>& args) {
+      //Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
+
       mat<T> tmp(*obj);
       int* dims=obj->dims;
       for(int j=0;j<dims[1];j++){
@@ -531,12 +501,13 @@ namespace sadira{
 	  (*obj)(j,i)=tmp(j,dims[0]-i-1);
 	}
       }
-      return scope.Close(args.This());
+      args.GetReturnValue().Set(args.Holder());  
     }
 
-    static Handle<Value> swapy(const Arguments& args) {
-      jsmat<T>* obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
-      HandleScope scope;
+    static void swapy(const v8::FunctionCallbackInfo<v8::Value>& args) {
+      //Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
+
       mat<T> tmp(*obj);
       int* dims=obj->dims;
       for(int j=0;j<dims[1];j++){
@@ -544,123 +515,78 @@ namespace sadira{
 	  (*obj)(j,i)=tmp(dims[1]-j-1,i);
 	}
       }
-      return scope.Close(args.This());
+      args.GetReturnValue().Set(args.Holder());  
     }
 
-    static Handle<Value> get_data(const Arguments& args) {
+    static void get_data(const v8::FunctionCallbackInfo<v8::Value>& args) {
+      Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
 
-      if (args.Length() > 1) {
-	//	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
-	//	return scope.Close(Undefined());
-      }
-      
-      jsmat<T>* obj = ObjectWrap::Unwrap<jsmat<T> >(args.This());
-      //cout << "gen histo for " << obj->file_name << endl;
-      
-      HandleScope scope;
-      //      Handle<String> result = v8::String::New("Hello");
-      //Handle<node::ArrayBuffer> result = node::ArrayBuffer::New(15);
-
-      /*
-      node::Buffer *slowBuffer = node::Buffer::New(512*512*4);
+      MaybeLocal<Object> slowBuffer = node::Buffer::New(isolate, obj->dim*4);
       
       // Buffer:Data gives us a yummy void* pointer to play with to our hearts
       // content.
-      
-      for(int i=0;i<512;i++){
-      for(int j=0;j<512;j++){
-	float v=(float) (*obj)(i,j);
-	float* b=(float*)node::Buffer::Data(slowBuffer);
-	memcpy(b+i*512+j, &v, 4);
-      }
-      }
-      */
-
-      node::Buffer *slowBuffer = node::Buffer::New(obj->dim*4);
-      
-      // Buffer:Data gives us a yummy void* pointer to play with to our hearts
-      // content.
-      float* b=(float*)node::Buffer::Data(slowBuffer);
+      Local<Object> checked_buf=slowBuffer.ToLocalChecked();
+	
+      float* b=(float*)node::Buffer::Data(checked_buf);
       
       for(int i=0;i<obj->dim;i++){
 	float v=(float) obj->c[i];
 	memcpy(b+i, &v, 4);
       }
+
+      args.GetReturnValue().Set(checked_buf);
       
-      // Now we need to create the JS version of the Buffer I was telling you about.
-      // To do that we need to actually pull it from the execution context.
-      // First step is to get a handle to the global object.
-      v8::Local<v8::Object> globalObj = v8::Context::GetCurrent()->Global();
+      // // Now we need to create the JS version of the Buffer I was telling you about.
+      // // To do that we need to actually pull it from the execution context.
+      // // First step is to get a handle to the global object.
+      // v8::Local<v8::Object> globalObj = v8::Context::GetCurrent()->Global();
 
-      // Now we need to grab the Buffer constructor function.
-      v8::Local<v8::Function> bufferConstructor = v8::Local<v8::Function>::Cast(globalObj->Get(v8::String::New("Buffer")));
+      // // Now we need to grab the Buffer constructor function.
+      // v8::Local<v8::Function> bufferConstructor = v8::Local<v8::Function>::Cast(globalObj->Get(v8::String::NewFromUtf8(isolate,"Buffer")));
 
-      // Great. We can use this constructor function to allocate new Buffers.
-      // Let's do that now. First we need to provide the correct arguments.
-      // First argument is the JS object Handle for the SlowBuffer.
-      // Second arg is the length of the SlowBuffer.
-      // Third arg is the offset in the SlowBuffer we want the .. "Fast"Buffer to start at.
-      v8::Handle<v8::Value> constructorArgs[3] = { slowBuffer->handle_, v8::Integer::New(obj->dim*4), v8::Integer::New(0) };
+      // // Great. We can use this constructor function to allocate new Buffers.
+      // // Let's do that now. First we need to provide the correct arguments.
+      // // First argument is the JS object Handle for the SlowBuffer.
+      // // Second arg is the length of the SlowBuffer.
+      // // Third arg is the offset in the SlowBuffer we want the .. "Fast"Buffer to start at.
+      // v8::Handle<v8::Value> constructorArgs[3] = { slowBuffer->handle_, v8::Integer::New(obj->dim*4), v8::Integer::New(0) };
 
-      // Now we have our constructor, and our constructor args. Let's create the 
-      // damn Buffer already!
-      v8::Local<v8::Object> actualBuffer = bufferConstructor->NewInstance(3, constructorArgs);
+      // // Now we have our constructor, and our constructor args. Let's create the 
+      // // damn Buffer already!
+      // v8::Local<v8::Object> actualBuffer = bufferConstructor->NewInstance(3, constructorArgs);
 
-      // This Buffer can now be provided to the calling JS code as easy as this:
-      return scope.Close(actualBuffer);
+      // // This Buffer can now be provided to the calling JS code as easy as this:
+      // args.GetReturnValue().Set(actualBuffer);
 
-      /*
-      static Persistent<Function> uint16_array_constructor;
-
-      if (uint16_array_constructor.IsEmpty()) {
-	Local<Object> global = Context::GetCurrent()->Global();
-	Local<Value> val = global->Get(String::New("Float32Array"));
-	assert(!val.IsEmpty() && "type not found: Float32Array");
-	assert(val->IsFunction() && "not a constructor: Float32Array");
-	uint16_array_constructor = Persistent<Function>::New(val.As<Function>());
-      }
-
-      Local<Value> size = Integer::NewFromUnsigned(obj->dim);
-      Local<Object> array = uint16_array_constructor->NewInstance(1, &size);
-
-
-      if (array->GetIndexedPropertiesExternalArrayDataType() != kExternalFloatArray){
-	ThrowException(Exception::TypeError(String::New("ExternalArrayDataType() != kExternalFloatArray")));
-	return scope.Close(Undefined());
-      }
-      
-      //int len = array->GetIndexedPropertiesExternalArrayDataLength();
-      
-      float* data = static_cast<float*>(array->GetIndexedPropertiesExternalArrayData());
-      
-      printf("first bytes : %d %d\n", (int) ( ((char*)obj->c)[0]), (int) ( ((char*)obj->c)[1]));
-      for(int i=0;i<obj->dim;i++) data[i]=obj->c[i];
-      
-      return scope.Close(array);
-      */
     }
     
     
-    static Handle<Value> gen_histogram(const Arguments& args) {
+    static void gen_histogram(const v8::FunctionCallbackInfo<v8::Value>& args) {
+
+      Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
+
       
-      jsmat<T>& imgdata = *ObjectWrap::Unwrap<jsmat<T> >(args.This());
-      cout << "gen histogram...." << endl;
-      
-      HandleScope scope;
+      jsmat<T>& imgdata = *obj;
       
       if (args.Length() < 2) {
-	ThrowException(Exception::TypeError(String::New("Wrong number of arguments")));
-	return scope.Close(Undefined());
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,"Wrong number of arguments")));
+	return;
       }
-      
-      Handle<Object> ar = args[0]->ToObject();
-
+      if (!args[0]->IsObject()) {
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,"First argument must be an Object")));
+	return;
+      }
       if (!args[1]->IsFunction()) {
-        return ThrowException(Exception::TypeError(String::New("Second argument must be a callback function")));
+        isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,"Second argument must be a callback function")));
+	return;
       }
 
+      Handle<Object> ar = args[0]->ToObject();
       Handle<Function> result_cb=Handle<Function>::Cast(args[1]);
-      Handle<Array> cuts_array = Handle<Array>::Cast(ar->Get(String::New("cuts")));
+      
+      Handle<Array> cuts_array = Handle<Array>::Cast(ar->Get(String::NewFromUtf8(isolate,"cuts")));
       
       double cuts[2];
       
@@ -668,30 +594,29 @@ namespace sadira{
 	cuts[0]=imgdata.min();
 	cuts[1]=imgdata.max();
       }else{
-	cuts[0]= cuts_array->Get(0)->ToNumber()->Value();
-	cuts[1]= cuts_array->Get(1)->ToNumber()->Value();
+	cuts[0]= cuts_array->Get(0)->NumberValue();
+	cuts[1]= cuts_array->Get(1)->NumberValue();
 
       }
 
-
-      Handle<Number> nbins_value = Handle<Number>::Cast(ar->Get(String::New("nbins")));
+      Handle<Number> nbins_value = Handle<Number>::Cast(ar->Get(String::NewFromUtf8(isolate,"nbins")));
       
       int nbins=nbins_value->IsUndefined() ? 200 :  nbins_value->Value();
       
       //MINFO << "Cuts " << cuts[0] << ", " << cuts[1] << " nbins = " << nbins << endl;
-      //      args[0]->ToNumber()->Value();
+      //      args[0]->NumberValue();
       double low= cuts[0];
       double max= cuts[1];
       double bsize=(max-low)/nbins;
 
-      v8::Handle<v8::Array> histo_data = v8::Array::New();
-      v8::Handle<v8::Object> result = v8::Object::New();
-      v8::Handle<v8::Number> start = v8::Number::New(low+.5*bsize);
-      v8::Handle<v8::Number> step = v8::Number::New(bsize);
+      v8::Handle<v8::Array> histo_data = v8::Array::New(isolate);
+      v8::Handle<v8::Object> result = v8::Object::New(isolate);
+      v8::Handle<v8::Number> start = v8::Number::New(isolate,low+.5*bsize);
+      v8::Handle<v8::Number> step = v8::Number::New(isolate,bsize);
 
-      result->Set(String::NewSymbol("start"), start);
-      result->Set(String::NewSymbol("step"), step);
-      result->Set(String::NewSymbol("data"), histo_data);
+      result->Set(String::NewFromUtf8(isolate,"start"), start);
+      result->Set(String::NewFromUtf8(isolate,"step"), step);
+      result->Set(String::NewFromUtf8(isolate,"data"), histo_data);
 
       /*      
       if(bsize<1){
@@ -721,14 +646,14 @@ namespace sadira{
 	//char sb[256];
 	
 	for(int i=0;i<nbins;i++){
-	  histo_data->Set(v8::Number::New(i),Number::New(histo[i]));
+	  histo_data->Set(v8::Number::New(isolate,i),Number::New(isolate,histo[i]));
 
 	  //sprintf(sb,"%g\t%g\n",low+(i+.5)*bsize, histo[i]*1.0);
 	  //  result_string+=sb;
 	}
 	
 	
-	//	Handle<String> result = v8::String::New(result_string.c_str());
+	//	Handle<String> result = v8::String::NewFromUtf8(isolate,result_string.c_str());
 	
 	//cout << "OK5" << endl;
 	//	return result;
@@ -736,36 +661,35 @@ namespace sadira{
       
       catch (qk::exception& e){
 	//cout << "Catch qk exception " << endl;
-	v8::ThrowException(v8::String::New(e.mess.c_str()));
+	isolate->ThrowException(v8::String::NewFromUtf8(isolate,e.mess.c_str()));
+	return;
       }
       
-      
-      
       const unsigned argc = 2;
-      Handle<Value> argv[argc] = { Undefined(), result };
-      result_cb->Call(Context::GetCurrent()->Global(), argc, argv );    
+      Handle<Value> argv[argc] = { Undefined(isolate), result };
+      result_cb->Call(isolate->GetCurrentContext()->Global(), argc, argv );    
       
-      return scope.Close(result);
+      args.GetReturnValue().Set(result);
+      
     }
-    
-    
-    
     
   };
   
-  template <class T> inline jsmat<T>* jsmat_unwrap(v8::Handle<v8::Object> handle) {
+  // template <class T> inline jsmat<T>* jsmat_unwrap(v8::Handle<v8::Object> handle) {
     
     
-    assert(!handle.IsEmpty());
-    assert(handle->InternalFieldCount() > 0);
-    // Cast to ObjectWrap before casting to T.  A direct cast from void
-    // to T won't work right when T has more than one base class.
-    void* ptr = handle->GetPointerFromInternalField(0);
-    ObjectWrap* wrap = static_cast<ObjectWrap*>(ptr);
+  //   assert(!handle.IsEmpty());
+  //   assert(handle->InternalFieldCount() > 0);
+  //   // Cast to ObjectWrap before casting to T.  A direct cast from void
+  //   // to T won't work right when T has more than one base class.
+  //   void* ptr = handle->GetPointerFromInternalField(0);
+  //   ObjectWrap* wrap = static_cast<ObjectWrap*>(ptr);
     
-    return static_cast<jsmat<T> *>(wrap);
-  }
-  
+  //   return static_cast<jsmat<T> *>(wrap);
+  // }
+
+
+  template <typename T> Persistent<Function> jsmat<T>::constructor;
 }
 
     

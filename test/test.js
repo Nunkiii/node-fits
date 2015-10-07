@@ -74,7 +74,7 @@ f.get_headers(function(error, headers){
 	    //custom PNG/JPEG.
 	    
 	    out = fs.createWriteStream("small.png");
-	    out.write(image.tile( { tile_coord :  [2,3], zoom :  10, tile_size : [64,64], type : "png" }));
+	    out.write(image.tile( { tile_coord :  [0,0], zoom :  0, tile_size : [64,64], type : "png" }));
 	    out.end();
 	    
 	    out = fs.createWriteStream("big.jpeg");

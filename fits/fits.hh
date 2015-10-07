@@ -5,12 +5,9 @@
 #ifndef __FITS_HH__
 #define __FITS_HH__
 
-#include <node.h>
-#include <node_buffer.h>
 #include <string>
 #include <fitsio.h>
 
-//#include <qk/colormap.hh>
 #include <math/jsmat.hh>
 #include <math/jsvec.hh>
 
@@ -24,19 +21,29 @@ namespace sadira{
 
   public:
 
-    static void Init(Handle<Object> exports);
-    static Persistent<FunctionTemplate> s_ctf;
-    
+    static void Init(Local<Object> exports);
+
+    static void NewInstance(const FunctionCallbackInfo<Value>& args){
+      
+      Isolate* isolate = args.GetIsolate();
+      
+      const unsigned argc = 1;
+      Local<Value> argv[argc] = { args[0] };
+      Local<Function> cons = Local<Function>::New(isolate, constructor);
+      Local<Object> instance = cons->NewInstance(argc, argv);
+      
+      args.GetReturnValue().Set(instance);
+    }
+
   private:
+    static Persistent<Function> constructor;
     
-    static v8::Persistent<v8::Function> constructor;
-    
-    fits();
+    explicit fits();
     ~fits();
     
     void open_file(const char* file_name, int mode=0);
     void close_file();
-    Handle<Object> get_headers_array();
+    Local<Object> get_headers_array(Isolate* isolate);
 
     void write_key_str(const string& _keyword, const string& _key_val, const string& _comment);
     void read_key_str(const string& _key_name,string& _key_val);
@@ -47,45 +54,38 @@ namespace sadira{
     int get_hdu_type();
     void get_img_hdu_size(mem<long>&hdims);
 
-    void send_status_message(v8::Local<v8::Function>& cb,const string& type, const string& message);
+    void send_status_message(Isolate* isolate, Local<Function>& cb,const string& type, const string& message);
 
-    void check_file_is_open(const Arguments& args);
+    void check_file_is_open(const FunctionCallbackInfo<Value>& args);
 
-    //    Handle<node::Buffer> gen_pngtile(Handle<Array>& parameters);
+    //    Local<node::Buffer> gen_pngtile(Local<Array>& parameters);
     
-    static Handle<Value> New(const Arguments& args);
-    static Handle<Value> open(const Arguments& args);
+    static void New(const FunctionCallbackInfo<Value>& args);
+    static void open(const FunctionCallbackInfo<Value>& args);
+    static void set_file(const FunctionCallbackInfo<Value>& args);
+    static void get_headers(const FunctionCallbackInfo<Value>& args);
+    static void get_headers_array(const FunctionCallbackInfo<Value>& args);
+    static void write_image_hdu(const FunctionCallbackInfo<Value>& args);
+    static void read_image_hdu(const FunctionCallbackInfo<Value>& args);
+    static void set_hdu(const FunctionCallbackInfo<Value>& args);
+    static void get_table_column(const FunctionCallbackInfo<Value>& args);
+    static void get_table_columns(const FunctionCallbackInfo<Value>& args);
+    static void get_table_data(const FunctionCallbackInfo<Value>& args);
 
-    static Handle<Value> set_file(const Arguments& args);
-    static Handle<Value> get_headers(const Arguments& args);
-    static Handle<Value> get_headers_array(const Arguments& args);
-    //    static Handle<Value> gen_pngtile(const Arguments& args);
-
-
-    static Handle<Value> write_image_hdu(const v8::Arguments& args);
-    static Handle<Value> read_image_hdu(const v8::Arguments& args);
     
-    static Handle<Value> set_hdu(const Arguments& args);
+    Local<Object> get_table_column(Isolate* isolate, int column_id);
+    Local<Object> get_table_columns(Isolate* isolate);
+    Local<Object> get_table_columns_hash(Isolate* isolate);
+    Local<Array> get_table_data(Isolate* isolate);
 
-    Handle<Object> get_table_column(int column_id);
-    static Handle<Value> get_table_column(const Arguments& args);
-
-
-    static Handle<Value> get_table_columns(const Arguments& args);
-    Handle<Object> get_table_columns();
-    Handle<Object> get_table_columns_hash();
-
-    static Handle<Value> get_table_data(const Arguments& args);
-    Handle<Array> get_table_data();
-    
     void report_fits_error();
 
-    //    Handle<String> create_image_histogram(double* cuts);
-    //    static Handle<Value> gen_histogram(const Arguments& args);
+    //    Local<String> create_image_histogram(double* cuts);
+    //    static Local<Value> gen_histogram(const FunctionCallbackInfo<Value>& args);
 
     double counter_;
 
-    string get_file_name(const Arguments& args);
+    string get_file_name(const FunctionCallbackInfo<Value>& args);
     
     template <typename T>
 
@@ -209,23 +209,28 @@ namespace sadira{
     }
 
     
-    Handle<Value> create_matrix_type(int _ftype, mem<long>&hdd){
-            
-      switch (_ftype){
-      case TBYTE: return jsmat<unsigned char>::Instantiate(hdd[0],hdd[1]);
-      case TSBYTE: return jsmat<char>::Instantiate(hdd[0],hdd[1]);
-      case TSHORT: return jsmat<short int>::Instantiate(hdd[0],hdd[1]);
-      case TUSHORT: return jsmat<unsigned short int>::Instantiate(hdd[0],hdd[1]);
-      case TLONG: return jsmat<int>::Instantiate(hdd[0],hdd[1]);
-      case TULONG: return jsmat<unsigned int>::Instantiate(hdd[0],hdd[1]);
-      case TLONGLONG: return jsmat<long int>::Instantiate(hdd[0],hdd[1]);
-      case TDOUBLE: return jsmat<double>::Instantiate(hdd[0],hdd[1]);
-      case TFLOAT: return jsmat<float>::Instantiate(hdd[0],hdd[1]);
-      default:
-	MERROR << "Cannot find suitable jsmatrix type for fits type " << _ftype << endl;
-      };
+    Local<Value> create_matrix_type(Isolate* isolate, int _ftype, mem<long>&hdd){
+
+      const unsigned argc = 2;
+      Local<Value> argv[argc] = { Number::New(isolate, hdd[0]),  Number::New(isolate, hdd[1]) };
+      Local<Function> cons; 
+      //Local<Object> instance = cons->NewInstance(argc, argv);
       
-      return Handle<Value>(Undefined());
+      switch (_ftype){
+      case TBYTE: cons = Local<Function>::New(isolate, jsmat<unsigned char>::constructor); break;
+      case TSBYTE: cons = Local<Function>::New(isolate, jsmat<char>::constructor); break;
+      case TSHORT: cons = Local<Function>::New(isolate, jsmat<short int>::constructor); break;
+      case TUSHORT: cons = Local<Function>::New(isolate, jsmat<unsigned short int>::constructor); break;
+      case TLONG: cons = Local<Function>::New(isolate, jsmat<int>::constructor); break;
+      case TULONG: cons = Local<Function>::New(isolate, jsmat<unsigned int>::constructor); break;
+      case TLONGLONG: cons = Local<Function>::New(isolate, jsmat<long int>::constructor);break;
+      case TDOUBLE: cons = Local<Function>::New(isolate, jsmat<double>::constructor);break;
+      case TFLOAT: cons = Local<Function>::New(isolate, jsmat<float>::constructor);break;
+      default:
+	MERROR << "Cannot find suitable jsmat type for FITS data type " << _ftype << endl;
+	return Local<Value>(Undefined(isolate));
+      };
+      return cons->NewInstance(argc, argv); 
     }
 
     //std::string file_name;
