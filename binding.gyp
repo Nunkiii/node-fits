@@ -32,7 +32,8 @@
 	    	
 	    	
 		['OS=="linux"', {
-		    'ldflags': ['-lcfitsio','-lpng','-ljpeg'],
+		'libraries' : ["-fPIC",'-lcfitsio','-lpng','-ljpeg'],	
+		  
 		    'cflags_cc': [ '-fexceptions', '-frtti'],
 		    'cflags_cc!': [
 			'-fno-exceptions',

@@ -56,7 +56,7 @@ namespace sadira{
 
     void send_status_message(Isolate* isolate, Local<Function>& cb,const string& type, const string& message);
 
-    void check_file_is_open(const FunctionCallbackInfo<Value>& args);
+    void check_file_is_open(const FunctionCallbackInfo<Value>& args, int mode=0);
 
     //    Local<node::Buffer> gen_pngtile(Local<Array>& parameters);
     
@@ -76,7 +76,7 @@ namespace sadira{
     Local<Object> get_table_column(Isolate* isolate, int column_id);
     Local<Object> get_table_columns(Isolate* isolate);
     Local<Object> get_table_columns_hash(Isolate* isolate);
-    Local<Array> get_table_data(Isolate* isolate);
+    Local<Array> get_table_data(Isolate* isolate, int,int);
 
     void report_fits_error();
 

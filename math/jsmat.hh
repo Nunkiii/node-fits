@@ -522,42 +522,53 @@ namespace sadira{
       Isolate* isolate = args.GetIsolate();
       jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
 
-      MaybeLocal<Object> slowBuffer = node::Buffer::New(isolate, obj->dim*4);
+      MINFO << "DataCheck " << obj->c[0] << ", " << obj->c[obj->dim-1] << endl;
+      MaybeLocal<v8::Object> buu =node::Buffer::Copy(isolate, (const char*) obj->c, obj->dim*sizeof(T));
+
+      Local<Object> cbuu = buu.ToLocalChecked();
+      
+      //float * b=(float*)node::Buffer::Data(cbuu);
+      //MINFO << "DataCheck after " << b[0] << ", " << b[obj->dim-1] << endl;
+      
+      args.GetReturnValue().Set(cbuu);
+      
+      // MaybeLocal<Object> slowBuffer = node::Buffer::New(isolate, obj->dim*4);
       
       // Buffer:Data gives us a yummy void* pointer to play with to our hearts
       // content.
-      Local<Object> checked_buf=slowBuffer.ToLocalChecked();
+      // Local<Object> checked_buf=slowBuffer.ToLocalChecked();
 	
-      float* b=(float*)node::Buffer::Data(checked_buf);
+      // float* b=(float*)node::Buffer::Data(checked_buf);
       
-      for(int i=0;i<obj->dim;i++){
-	float v=(float) obj->c[i];
-	memcpy(b+i, &v, 4);
-      }
-
-      args.GetReturnValue().Set(checked_buf);
+      // for(int i=0;i<obj->dim;i++){
+      // 	float v=(float) obj->c[i];
+      // 	memcpy(b+i, &v, 4);
+      // }
+      
+      //args.GetReturnValue().Set(checked_buf);
+      
       
       // // Now we need to create the JS version of the Buffer I was telling you about.
       // // To do that we need to actually pull it from the execution context.
       // // First step is to get a handle to the global object.
-      // v8::Local<v8::Object> globalObj = v8::Context::GetCurrent()->Global();
+      //v8::Local<v8::Object> globalObj = isolate->GetCurrentContext()->Global();//v8::Context::GetCurrent()->Global();
 
       // // Now we need to grab the Buffer constructor function.
-      // v8::Local<v8::Function> bufferConstructor = v8::Local<v8::Function>::Cast(globalObj->Get(v8::String::NewFromUtf8(isolate,"Buffer")));
+      //v8::Local<v8::Function> bufferConstructor = v8::Local<v8::Function>::Cast(globalObj->Get(v8::String::NewFromUtf8(isolate,"Buffer")));
 
       // // Great. We can use this constructor function to allocate new Buffers.
       // // Let's do that now. First we need to provide the correct arguments.
       // // First argument is the JS object Handle for the SlowBuffer.
       // // Second arg is the length of the SlowBuffer.
       // // Third arg is the offset in the SlowBuffer we want the .. "Fast"Buffer to start at.
-      // v8::Handle<v8::Value> constructorArgs[3] = { slowBuffer->handle_, v8::Integer::New(obj->dim*4), v8::Integer::New(0) };
+      //v8::Handle<v8::Value> constructorArgs[3] = { slowBuffer, v8::Integer::New(isolate, obj->dim*4), v8::Integer::New(isolate, 0) };
 
       // // Now we have our constructor, and our constructor args. Let's create the 
       // // damn Buffer already!
-      // v8::Local<v8::Object> actualBuffer = bufferConstructor->NewInstance(3, constructorArgs);
+      //v8::Local<v8::Object> actualBuffer = bufferConstructor->NewInstance(3, constructorArgs);
 
       // // This Buffer can now be provided to the calling JS code as easy as this:
-      // args.GetReturnValue().Set(actualBuffer);
+      //args.GetReturnValue().Set(actualBuffer);
 
     }
     

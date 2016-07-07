@@ -62,7 +62,7 @@ namespace sadira{
       throw qk::exception("No file name set, use set_file command to provide one");
     }
     */
-    //MINFO << "Opening File name [" << file_name << "]"<<endl;
+    MINFO << "Opening File name [" << file_name << "] mode " << _mode <<endl;
     
     fstat=0;
     FILE*fff;
@@ -244,27 +244,35 @@ namespace sadira{
   }
 
 
-  void fits::check_file_is_open(const FunctionCallbackInfo<Value>& args) {
+  void fits::check_file_is_open(const FunctionCallbackInfo<Value>& args, int mode) {
     Isolate* isolate = args.GetIsolate();
     fits* obj = ObjectWrap::Unwrap<fits>(args.Holder());
 
     if(f) return;
-
-    try{
-      
-      Local<Value> fff=args.This()->Get(String::NewFromUtf8(isolate,"file_name"));
-            
-      String::Utf8Value fn(fff->ToString());
-      
-      //string fn=obj->get_file_name(args);
-
-      //MINFO << "Opening " << *fn << endl;
-      obj->open_file(*fn);
+    
+    //MINFO << "Opening ..."  << endl;
+    Local<Value> fff=args.This()->Get(String::NewFromUtf8(isolate,"file_name"));
+    
+    if(fff->IsUndefined()){
+      //MINFO << "UNDEFINED"  << endl;
+      throw qk::exception("File name not set !");
+      //isolate->ThrowException(String::NewFromUtf8(isolate, "File name not set !"));
+      //MINFO << "SENT EXC"  << endl;
+      return;
     }
-    catch (qk::exception& e){
-      isolate->ThrowException(String::NewFromUtf8(isolate, e.mess.c_str()));
-      //return Undefined();
-    }
+    
+    String::Utf8Value fn(fff->ToString());
+    
+    //string fn=obj->get_file_name(args);
+    
+    //MINFO << "Opening " << *fn << endl;
+    //    try{
+    obj->open_file(*fn, mode);
+    // }
+    // catch (qk::exception& e){
+    //   isolate->ThrowException(String::NewFromUtf8(isolate, e.mess.c_str()));
+    //   return;
+    // }
     
   }
   
@@ -484,7 +492,6 @@ namespace sadira{
       //cout << "setting hdu to " << hduid << "OK!!!!!"<<endl;
       args.GetReturnValue().Set(args.This());
     }
-
     
     catch (qk::exception& e){
       isolate->ThrowException(String::NewFromUtf8(isolate, e.mess.c_str()));
@@ -496,7 +503,7 @@ namespace sadira{
 
   void fits::get_table_column(const FunctionCallbackInfo<Value>& args){
     
-    cout << "Get table column " <<  endl;
+    //cout << "Get table column " <<  endl;
 
     
     Isolate* isolate = args.GetIsolate();
@@ -540,6 +547,9 @@ namespace sadira{
       
     Isolate* isolate = args.GetIsolate();
 
+    HandleScope handle_scope(isolate);
+    cout << "Handle scope BEGIN N=" << handle_scope.NumberOfHandles(isolate)<<endl;
+    
     if (args.Length() < 1) {
       isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong number of arguments")));
       args.GetReturnValue().Set(Undefined(isolate));
@@ -548,18 +558,35 @@ namespace sadira{
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
 
     Local<Function> cb=Local<Function>::Cast(args[0]);
+    Local<Object> opts=Local<Object>::Cast(args[1]);
 
+    Local<Object> opts_row_start=Local<Object>::Cast(opts->Get( String::NewFromUtf8(isolate, "row_start")));
+    Local<Object> opts_nrows=Local<Object>::Cast(opts->Get( String::NewFromUtf8(isolate, "nrows")));
+
+    int row_start=0;
+    if ( ! opts_row_start->IsUndefined() ) row_start= (int) opts_row_start->ToNumber()->Value();
+
+    int nrows=-1;
+    if ( ! opts_row_start->IsUndefined() )  nrows= (int) opts_nrows->ToNumber()->Value();
+
+    cout << "Row start= " << row_start << " nr=" << nrows<< endl;
+    
     try{
       obj->check_file_is_open(args);
 
       //obj->file_name=obj->get_file_name(args);
-      Local<Array> columns=obj->get_table_data(isolate);
+      Local<Array> columns=obj->get_table_data(isolate, row_start, nrows);
     
       //args.GetReturnValue().Set(obj->get_table_columns(args[0]->NumberValue()));
-      //      cout << "DONE datal = " <<endl;
+      cout << "Got data aray L= " << columns->Length();
       const unsigned argc = 2;
       Local<Value> argv[argc] = { Undefined(isolate), columns };
-      cb->Call(isolate->GetCurrentContext()->Global(), argc, argv );    
+
+      cb->Call(isolate->GetCurrentContext()->Global(), argc, argv );
+
+      cout << "Handle scope N=" << handle_scope.NumberOfHandles(isolate)<<endl;
+      //handle_scope->Close();
+      //columns->Delete(isolate, columns);
     }
 
     catch (qk::exception &e){
@@ -575,18 +602,17 @@ namespace sadira{
   }
 
 
-  Local<Array> fits::get_table_data(Isolate* isolate){
+  Local<Array> fits::get_table_data(Isolate* isolate, int row_start, int nrows_max){
 
 
     Local<Array> result_object = Array::New(isolate);
+
+    
     
     try{
       
-      //open_file();
-      
       int hdutype;
 
-      //      fits_movabs_hdu(f, hdu_id, NULL, &fstat); report_fits_error();    
       fits_get_hdu_type(f, &hdutype, &fstat); report_fits_error();
       
 
@@ -613,7 +639,7 @@ namespace sadira{
 	fits_get_coltype(f,k, &col_type[k-1],&repeat,&w, &fstat);report_fits_error();
 	if(w>width) width=w;
 	fits_get_colname(f,CASEINSEN,column_id_s,column_name[k-1], &another_column_id, &fstat);report_fits_error(); 
-	cout << "COL " << k << " : w = " << w << endl; 
+	//cout << "COL " << k << " : w = " << w << endl; 
       }
       
       
@@ -625,8 +651,10 @@ namespace sadira{
       
       //result_object->Set(String::NewFromUtf8("name"),String::NewFromUtf8(column_name));
       //result_object->Set(String::NewFromUtf8("type"),String::NewFromUtf8("text"));
-	
-      for (jj = 1; jj <= nrows && !fstat; jj++) {
+
+      if(nrows_max==-1) nrows_max=nrows;
+      
+      for (jj = row_start+1; jj <= row_start+nrows_max && !fstat; jj++) {
 	
 	Local<Array> row_data = Array::New(isolate);
 	result_object->Set(Number::New(isolate, jj-1),row_data);
@@ -729,25 +757,25 @@ namespace sadira{
 	
 
 	result_object->Set(String::NewFromUtf8(isolate, "type"),String::NewFromUtf8(isolate, "numerical"));
-	cout << "Alloc memory ...  " << nrows << endl;
+	//cout << "Alloc memory ...  " << nrows << endl;
 
 	qk::mem<double> x(nrows);
 	double nulval=-9999;	
 
-	cout << "Reading fits ...  " << x.dim << endl;
+	//cout << "Reading fits ...  " << x.dim << endl;
 	fits_read_col(f,TDOUBLE,column_id,1,1,nrows,&nulval,x.c, &anynul, &fstat);
 
 	report_fits_error();
 
 
 	
-	cout << "Copy into JS array...  " << x.dim << endl;
+	//cout << "Copy into JS array...  " << x.dim << endl;
 	
 	for (jj = 0; jj < nrows; jj++) {
 	  //fits_read_col(f,TDOUBLE,column_id,jj,1,1,&nulval,&x, &anynul, &fstat);report_fits_error(); 
 	  column_data->Set(Number::New(isolate, jj),Number::New(isolate, x[jj]));
 	}
-	cout << "Copy JS array done!  " << x.dim << endl;
+	//cout << "Copy JS array done!  " << x.dim << endl;
       }
 
 
@@ -935,7 +963,7 @@ namespace sadira{
 
     jsmat<unsigned short>* image_data = ObjectWrap::Unwrap<jsmat<unsigned short> >(ar);
     
-    obj->check_file_is_open(args);
+    obj->check_file_is_open(args,1);
     //obj->open_file(obj->get_file_name(args),1);
 
     obj->write_image(*image_data);
@@ -994,6 +1022,7 @@ namespace sadira{
 	
 	col_object->Set(String::NewFromUtf8(isolate, "name"),String::NewFromUtf8(isolate, column_name));
 	col_object->Set(String::NewFromUtf8(isolate, "width"),Number::New(isolate, width));
+	col_object->Set(String::NewFromUtf8(isolate, "coltype"),Number::New(isolate, col_type));
 	
 	if(col_type == TSTRING){
 	  col_object->Set(String::NewFromUtf8(isolate, "type"),String::NewFromUtf8(isolate, "text"));
