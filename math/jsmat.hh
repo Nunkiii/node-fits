@@ -56,8 +56,8 @@ namespace sadira{
       NODE_SET_PROTOTYPE_METHOD(tpl, "set_cuts_histo", set_cuts_histo);
       NODE_SET_PROTOTYPE_METHOD(tpl, "histogram", gen_histogram);
       NODE_SET_PROTOTYPE_METHOD(tpl, "get_data", get_data);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "set_data", set_data);
       NODE_SET_PROTOTYPE_METHOD(tpl, "tile",tile);
-
 
       constructor.Reset(isolate, tpl->GetFunction());
       exports->Set(String::NewFromUtf8(isolate, class_name),tpl->GetFunction());
@@ -343,15 +343,15 @@ namespace sadira{
     }
 
     static void tile(const v8::FunctionCallbackInfo<v8::Value>& args) {
-
+      
       Isolate* isolate = args.GetIsolate();
       jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
-
+      
       if (args.Length() < 1) {
 	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,"Wrong number of arguments")));
 	return;
       }
-
+      
       if (!args[0]->IsObject()) {
 	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Argument must be an Object")));
 	return;
@@ -518,7 +518,35 @@ namespace sadira{
       args.GetReturnValue().Set(args.Holder());  
     }
 
+
+    static void set_data(const v8::FunctionCallbackInfo<v8::Value>& args) {
+      
+      Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
+
+      if (args.Length() < 3) {
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,"Wrong number of arguments, excpecting : (Dx, Dy, Buffer)")));
+	return;
+      }
+      
+      Handle<Integer> dx = Handle<Integer>::Cast(args[0]);
+      Handle<Integer> dy = Handle<Integer>::Cast(args[1]);
+
+      T* buf = (T*) node::Buffer::Data(args[2]);
+
+      int Dx=dx->NumberValue();
+      int Dy=dy->NumberValue();
+
+      MINFO << "Creating image " << Dx << " X " << Dy << endl;
+      obj->redim(Dx,Dy);
+	    
+      memcpy(obj->c, buf,obj->dim*sizeof(T)); 
+      
+      
+    }
+    
     static void get_data(const v8::FunctionCallbackInfo<v8::Value>& args) {
+
       Isolate* isolate = args.GetIsolate();
       jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
 
