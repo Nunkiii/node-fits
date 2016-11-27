@@ -968,7 +968,7 @@ namespace sadira{
 
     obj->write_image(*image_data);
 
-    //obj->close_file();
+    obj->close_file();
 
     args.GetReturnValue().Set(args.This());
   }
