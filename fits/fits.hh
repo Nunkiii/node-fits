@@ -97,6 +97,8 @@ namespace sadira{
     }
     
     
+    void write_key( Isolate* isolate, Local<Object> opts);
+    
     template <typename T>
     void write_key(const string& _keyword, T _key_val, const string& _comment=""){
       int ft=get_fits_type<T>();
