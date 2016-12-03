@@ -202,7 +202,8 @@ namespace qk{
   {
     mat<T> ret(*this);
     for(register int i=0;i<ret.dim;i++)
-      ret[i]/=o;  return ret;
+      ret[i]/=o;
+    return ret;
   }
 
   

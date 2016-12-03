@@ -24,8 +24,13 @@ console.log("New objects available : ");for (var fm in f) console.log("\t-> " + 
 
 f.write_image_hdu(M);
 
-f.set_header_key({ key : "Toto", value : 23, comment : "Blblblbl "}, function(error){
+f.set_header_key({ key : "TotoNum", value : 23, comment : "Blblblbl "}, function(error){
     console.log("Error is [" + error + "]");
+
+    f.set_header_key({ key : "TotoString", value : "Hellooooo" , comment : "Blblblbl "}, function(error){
+	console.log("Error is [" + error + "]");
+    });
+
 });
 
 

@@ -102,22 +102,31 @@ namespace qk{
     }
     
     const vec & operator += (const vec & v){
-      for( register int i=0; i<dim;i++) c[i]+=v[i]; return *this;
+      for( register int i=0; i<dim;i++)
+	c[i]+=v[i];
+      return *this;
     }
     const vec & operator -= (const vec & v){
-      for( register int i=0; i<dim;i++) c[i]-=v[i]; return *this;
+      for( register int i=0; i<dim;i++)
+	c[i]-=v[i];
+      return *this;
     }
 
     const vec & operator *= (const vec & v){
-      for( register int i=0; i<dim;i++) c[i]*=v[i]; return *this;
+      for( register int i=0; i<dim;i++)
+	c[i]*=v[i];
+      return *this;
     }
 
     const vec & operator /= (const vec & v){
-      for( register int i=0; i<dim;i++) c[i]/=v[i]; return *this;
+      for( register int i=0; i<dim;i++)
+	c[i]/=v[i];
+      return *this;
     }
 
     vec& operator /= (const T & _o){
-      for(register int i=0;i<dim;i++) c[i]/=_o;  
+      for(register int i=0;i<dim;i++)
+	c[i]/=_o;  
       return *this;
     }
     
@@ -127,7 +136,7 @@ namespace qk{
 	c[i]*=_o;  
       return *this;
     }
-
+    
     vec& operator += (const T & _o){
       for(register int i=0;i<dim;i++)
 	c[i]+=_o;  

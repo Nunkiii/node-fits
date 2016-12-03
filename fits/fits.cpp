@@ -473,19 +473,17 @@ namespace sadira{
     Local<Value> key_name = opts->Get(String::NewFromUtf8(isolate, "key"));
     Local<Value> key_value = opts->Get(String::NewFromUtf8(isolate, "value"));
     Local<Value> key_comment = opts->Get(String::NewFromUtf8(isolate, "comment"));
-
+    
     try{
       
       if(key_name->IsUndefined()) 
       	throw qk::exception("You need to provide a 'key' string in first argument object !");
       if(key_value->IsUndefined()) 
       	throw qk::exception("You need to provide a 'value' string in first argument object !");
-      
+
       v8::String::Utf8Value key(key_name->ToString());
-      v8::String::Utf8Value value(key_value->ToString());
-      
       std::string s_key = std::string(*key);
-      std::string s_value = std::string(*value);
+      
       std::string s_comment = "";
 	
       if(!key_comment->IsUndefined()){
@@ -495,7 +493,18 @@ namespace sadira{
 
       obj->check_file_is_open(args, 2);
       obj->set_current_hdu(0);
-      obj->write_key_str(s_key, s_value, s_comment);
+
+      if(key_value->IsNumber()){
+	double num_value;
+	num_value = key_value->NumberValue();
+	MINFO << "Writing key as double number " << num_value << endl;
+	obj->write_key(s_key, num_value, s_comment);
+      }else{
+	
+	v8::String::Utf8Value value(key_value->ToString());
+	std::string s_value = std::string(*value);
+	obj->write_key_str(s_key, s_value, s_comment);
+      }
       obj->close_file();
       
       
