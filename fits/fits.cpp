@@ -324,7 +324,6 @@ namespace sadira{
     char kvalue[FLEN_VALUE];
     char kcomment[FLEN_COMMENT];
 
-  
     fits_get_num_hdus(f, &nhdu,&fstat); report_fits_error();  /* Get the current HDU position */
     fits_get_hdu_num(f, &hdupos);  /* Get the current HDU position */
     fits_get_hdrspace(f, &nkeys, NULL, &fstat); /* get # of keywords */
@@ -454,6 +453,69 @@ namespace sadira{
 
   }
 
+  void fits::set_header_key(const FunctionCallbackInfo<Value>& args) {
+
+    Isolate* isolate = args.GetIsolate();
+
+    if (args.Length() < 2) {
+      isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "node-fits : Wrong number of arguments : need  a key info hash and callback function !")));
+      args.GetReturnValue().Set(Undefined(isolate));
+      return;
+    }
+
+    fits* obj = ObjectWrap::Unwrap<fits>(args.This());
+
+    Local<Object> opts=Local<Object>::Cast(args[0]);
+    Local<Function> cb=Local<Function>::Cast(args[1]);
+    
+    //if (callback->IsUndefined()) {
+
+    Local<Value> key_name = opts->Get(String::NewFromUtf8(isolate, "key"));
+    Local<Value> key_value = opts->Get(String::NewFromUtf8(isolate, "value"));
+    Local<Value> key_comment = opts->Get(String::NewFromUtf8(isolate, "comment"));
+
+    try{
+      
+      if(key_name->IsUndefined()) 
+      	throw qk::exception("You need to provide a 'key' string in first argument object !");
+      if(key_value->IsUndefined()) 
+      	throw qk::exception("You need to provide a 'value' string in first argument object !");
+      
+      v8::String::Utf8Value key(key_name->ToString());
+      v8::String::Utf8Value value(key_value->ToString());
+      
+      std::string s_key = std::string(*key);
+      std::string s_value = std::string(*value);
+      std::string s_comment = "";
+	
+      if(!key_comment->IsUndefined()){
+	v8::String::Utf8Value comment(key_comment->ToString());
+	s_comment = std::string(*comment);
+      }
+
+      obj->check_file_is_open(args, 2);
+      obj->set_current_hdu(0);
+      obj->write_key_str(s_key, s_value, s_comment);
+      obj->close_file();
+      
+      
+      const unsigned argc = 2;
+      Local<Value> argv[argc] = { Undefined(isolate), Undefined(isolate) };
+      cb->Call(isolate->GetCurrentContext()->Global(), argc, argv );    
+    }
+
+    catch (qk::exception &e){
+
+      const unsigned argc = 2;
+      
+      Local<Value> argv[argc] = { String::NewFromUtf8(isolate, e.mess.c_str()), Undefined(isolate) };
+      cb->Call(isolate->GetCurrentContext()->Global(), argc, argv );    
+    }
+    
+
+    args.GetReturnValue().Set(args.This());
+  }
+  
   void fits::get_headers_array(const FunctionCallbackInfo<Value>& args) {
 
     Isolate* isolate = args.GetIsolate();
@@ -777,12 +839,11 @@ namespace sadira{
 	}
 	//cout << "Copy JS array done!  " << x.dim << endl;
       }
-
-
+      
       result_object->Set(String::NewFromUtf8(isolate, "data"),column_data);
       close_file();
     }
-      
+    
     catch (qk::exception& e){
       isolate->ThrowException(String::NewFromUtf8(isolate, e.mess.c_str()));
     }
@@ -967,8 +1028,9 @@ namespace sadira{
     //obj->open_file(obj->get_file_name(args),1);
 
     obj->write_image(*image_data);
-
     obj->close_file();
+
+    
 
     args.GetReturnValue().Set(args.This());
   }
@@ -1134,6 +1196,7 @@ namespace sadira{
     NODE_SET_PROTOTYPE_METHOD(tpl, "get_headers_array", get_headers_array);
     NODE_SET_PROTOTYPE_METHOD(tpl, "set_hdu",set_hdu);
     NODE_SET_PROTOTYPE_METHOD(tpl, "set_file",set_file);
+    NODE_SET_PROTOTYPE_METHOD(tpl, "set_header_key",set_header_key);
     NODE_SET_PROTOTYPE_METHOD(tpl, "get_table_column",get_table_column);
     NODE_SET_PROTOTYPE_METHOD(tpl, "get_table_columns",get_table_columns);
     NODE_SET_PROTOTYPE_METHOD(tpl, "get_table_data",get_table_data);

@@ -18,4 +18,14 @@ for(var i=0;i<640*480;i++){
 
 M.set_data(640,480,B);
 
+
+console.log("New objects available : ");for (var fm in f) console.log("\t-> " + fm);
+
+
 f.write_image_hdu(M);
+
+f.set_header_key({ key : "Toto", value : 23, comment : "Blblblbl "}, function(error){
+    console.log("Error is [" + error + "]");
+});
+
+

@@ -65,6 +65,7 @@ namespace sadira{
     static void set_file(const FunctionCallbackInfo<Value>& args);
     static void get_headers(const FunctionCallbackInfo<Value>& args);
     static void get_headers_array(const FunctionCallbackInfo<Value>& args);
+    static void set_header_key(const FunctionCallbackInfo<Value>& args);
     static void write_image_hdu(const FunctionCallbackInfo<Value>& args);
     static void read_image_hdu(const FunctionCallbackInfo<Value>& args);
     static void set_hdu(const FunctionCallbackInfo<Value>& args);
