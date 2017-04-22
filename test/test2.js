@@ -32,7 +32,8 @@ f.set_header_key({ key : "TotoNum", value : 23, comment : "Blblblbl "}, function
 	    { key : "TotoString", value : "Hellooooo" , comment : "Blblblbl Bleble"},
 	    { key : "TotoString2", value : "Hellooooo Again !" , comment : "Blblblbl Bloblo"},
 	    { key : "TotoNum2", value : 3 , comment : "Blblblbl Blala "},
-	    { key : "TotoNum3", value : 4 , comment : "Blblblbl Blublu "}
+	    { key : "TotoNum3", value : 4 , comment : "Blblblbl Blublu "},
+	    { key : "Date1", value : new Date() , comment : "Now ! "}
 	    
 	]
 	, function(error){

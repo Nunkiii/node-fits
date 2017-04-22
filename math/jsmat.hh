@@ -452,7 +452,7 @@ namespace sadira{
 	    // if(value<0) value=0;
 	    // if(value>255) value=255;
 	    //cout << "Color : ";
-	    for(int c=0;c<depth;c++) png_data(y,x,c)=(unsigned char) (tmpcol[c]*255.0);
+	    for(int c=0;c<depth;c++) png_data(png_data.dims[1]-y-1,x,c)=(unsigned char) (tmpcol[c]*255.0);
 	    
 	  // png_data(y,x,0)=(unsigned char) (value);
 	  // png_data(y,x,1)=(unsigned char) (value);

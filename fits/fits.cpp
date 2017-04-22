@@ -474,13 +474,17 @@ namespace sadira{
       s_comment = std::string(*comment);
     }
     
-    
-    
     if(key_value->IsNumber()){
       double num_value;
       num_value = key_value->NumberValue();
-      MINFO << "Writing key as double number " << num_value << endl;
-      write_key(s_key, num_value, s_comment);
+
+      if (floor(num_value) == num_value ){
+	int int_value=(int)num_value;
+	write_key(s_key, int_value, s_comment);
+      }else{
+      //      MINFO << "Writing key as double number " << num_value << endl;
+	write_key(s_key, num_value, s_comment);
+      }
     }else{
       
       v8::String::Utf8Value value(key_value->ToString());
