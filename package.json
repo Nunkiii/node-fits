@@ -1,0 +1,31 @@
+{
+  "name": "node-fits",
+  "version": "0.1.0",
+  "description": "A set of (experimental) tools to access FITS files from Node.",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "test/test2.js",
+    "install": "node-gyp rebuild"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nunkiii/node-fits.git"
+  },
+  "keywords": [
+    "node",
+    "fits",
+    "astronomy",
+    "raw",
+    "images"
+  ],
+  "author": "Pierre Sprimont",
+  "license": "ISC",
+  "gypfile": true,
+  "bugs": {
+    "url": "https://github.com/Nunkiii/node-fits/issues"
+  },
+  "homepage": "https://github.com/Nunkiii/node-fits#readme"
+}
