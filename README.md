@@ -5,17 +5,21 @@ FITS is a versatile file format used to store astronomical images and data (http
 
 ### To build:
 
-The `node-fits` module has been successfully compiled and tested on gnu/linux and on MacOS. node-gyp is used as the building tool. Other platforms have not been tested yet.
+The `node-fits` module has been successfully compiled and tested on gnu/linux and on MacOS. node-gyp can be used as the building tool. Other platforms have not been tested yet.
 
 You will need to install the development versions of libpng, libjpeg and libcfitsio. The package names may differ in your distribution. On a debian-based system, the following command should install the required libraries.
 
-    #apt-get install node node-gyp g++ libpng-dev libjpeg-dev libcfitsio3-dev 
+    #apt-get install node node-gyp g++ libpng-dev libjpeg-dev libcfitsio-dev 
    
 In the node-fits directory, the following commands will build the module:
 
     $node-gyp configure
     $node-gyp build
     
+Or let `npm` do it for you:
+ 
+    npm -f install
+
 
 ### Testing
 
@@ -42,16 +46,16 @@ The file can also be specified as the `file_name` property of the `fits` object.
 
 To retrieve the headers, use the `get_headers` function. 
 
-f.get_headers(function(error, headers){
+    f.get_headers(function(error, headers){
   
-  if(error){
-    console.log("Bad things happened : " + error);
-    return;
-  }
+    if(error){
+      console.log("Bad things happened : " + error);
+      return;
+    }
 
-  console.log("FITS Headers : " + JSON.stringify(headers,null,5));
+    console.log("FITS Headers : " + JSON.stringify(headers,null,5));
   
-});
+    });
 
 
 Getting data from an image hdu : 
@@ -87,13 +91,14 @@ The image.tile() function was initially designed for a image viewer's tile gener
 		 out.write(image.tile( { tile_coord :  [0,0], zoom :  0, tile_size : [512,512], type : "jpeg" }));
 		 out.end();
 	
-//	image.histogram({ nbins: 350, cuts : [23,65] }, function(error, histo){ .... 
+    //	image.histogram({ nbins: 350, cuts : [23,65] }, function(error, histo){ .... 
+
 By default cuts are set to min,max and nbins to 200
 
 	   image.histogram({}, function(error, histo){ 
 	   	if(error)
 			console.log("Histo error : " + error);
-else{
+    else{
 		
 		console.log("HISTO : " + JSON.stringify(histo));
 		
