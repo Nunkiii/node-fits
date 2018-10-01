@@ -8,6 +8,8 @@
 #include <string>
 #include <fitsio.h>
 
+//#include <nan.h>
+
 #include <math/jsmat.hh>
 #include <math/jsvec.hh>
 
@@ -23,17 +25,41 @@ namespace sadira{
 
     static void Init(Local<Object> exports);
 
-    static void NewInstance(const FunctionCallbackInfo<Value>& args){
+    // static void NewInstance(const FunctionCallbackInfo<Value>& args){
       
-      Isolate* isolate = args.GetIsolate();
+    //   Isolate* isolate = args.GetIsolate();
+
+    //   Local<Context> context = isolate->GetCurrentContext();
+
+    //   if (args.IsConstructCall()) {
+    // 	// Invoked as constructor: `new MyObject(...)`
+    // 	//double value = args[0]->IsUndefined() ?
+    // 	//  0 : args[0]->NumberValue(context).FromMaybe(0);
+    // 	fits* obj = new fits(); //value);
+    // 	obj->Wrap(args.This());
+    // 	args.GetReturnValue().Set(args.This());
+    //   } else {
+    // 	// Invoked as plain function `MyObject(...)`, turn into construct call.
+    // 	const int argc = 1;
+    // 	Local<Value> argv[argc] = { args[0] };
+    // 	Local<Function> cons = Local<Function>::New(isolate, constructor);
+    // 	Local<Object> result =
+    // 	  cons->NewInstance(context, argc, argv).ToLocalChecked();
+    // 	args.GetReturnValue().Set(result);
+    //   }
       
-      const unsigned argc = 1;
-      Local<Value> argv[argc] = { args[0] };
-      Local<Function> cons = Local<Function>::New(isolate, constructor);
-      Local<Object> instance = cons->NewInstance(argc, argv);
+    //   // const unsigned argc = 1;
+    //   // Local<Value> argv[argc] = { args[0] };
+    //   // Local<Function> cons = Local<Function>::New(isolate, constructor);
+
+
+    //   // //      Local<Function> cons = Nan::New<Function>(constructor);
+    //   // //args.GetReturnValue().Set(cons->NewInstance(argc, argv));
+
+    //   // Local<Object> instance = cons->NewInstance(argc, argv);
       
-      args.GetReturnValue().Set(instance);
-    }
+    //   // args.GetReturnValue().Set(instance);
+    // }
 
   private:
     static Persistent<Function> constructor;
@@ -214,7 +240,7 @@ namespace sadira{
     
     Local<Value> create_matrix_type(Isolate* isolate, int _ftype, mem<long>&hdd){
 
-      const unsigned argc = 2;
+      const int argc = 2;
       Local<Value> argv[argc] = { Number::New(isolate, hdd[0]),  Number::New(isolate, hdd[1]) };
       Local<Function> cons; 
       //Local<Object> instance = cons->NewInstance(argc, argv);
@@ -233,7 +259,12 @@ namespace sadira{
 	MERROR << "Cannot find suitable jsmat type for FITS data type " << _ftype << endl;
 	return Local<Value>(Undefined(isolate));
       };
-      return cons->NewInstance(argc, argv); 
+
+
+      Local<Context> context = isolate->GetCurrentContext();
+      Local<Object> result =cons->NewInstance(context, argc, argv).ToLocalChecked();
+      
+      return result; //cons->NewInstance(argc, argv); 
     }
 
     //std::string file_name;

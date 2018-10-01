@@ -31,7 +31,9 @@ namespace sadira{
       tpl->InstanceTemplate()->SetInternalFieldCount(1);
       
       NODE_SET_PROTOTYPE_METHOD(tpl, "length",length);
-
+      NODE_SET_PROTOTYPE_METHOD(tpl, "get_value", get_value);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "set_value", set_value);
+      
       constructor.Reset(isolate, tpl->GetFunction());
 
       exports->Set(String::NewFromUtf8(isolate, class_name),tpl->GetFunction());
@@ -63,7 +65,8 @@ namespace sadira{
     static void New(const FunctionCallbackInfo<Value>& args) {
 
       Isolate* isolate = args.GetIsolate();
-
+      Local<Context> context = isolate->GetCurrentContext();
+      
       if (args.IsConstructCall()) {
 	// Invoked as constructor: `new MyObject(...)`
 	int value = (int) args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
@@ -75,9 +78,66 @@ namespace sadira{
 	const int argc = 1;
 	Local<Value> argv[argc] = { args[0] };
 	Local<Function> cons = Local<Function>::New(isolate, constructor);
-	args.GetReturnValue().Set(cons->NewInstance(argc, argv));
+	Local<Object> result =cons->NewInstance(context, argc, argv).ToLocalChecked();
+	args.GetReturnValue().Set(result);//cons->NewInstance(argc, argv));
       }
       
+    }
+
+    static void get_value(const FunctionCallbackInfo<Value>& args) {
+
+      Isolate* isolate = args.GetIsolate();
+      jsvec* obj = ObjectWrap::Unwrap<jsvec>(args.Holder());
+      
+      if (args.Length() < 1) {
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,"Wrong number of arguments")));
+	return;
+      }
+      
+      if (!args[0]->IsNumber()) {
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Argument must be a Number")));
+	return;
+      }
+      
+      double d_num=(double) args[0]->NumberValue();
+      if(d_num<0 || d_num>obj->dim-1){
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Argument must be a positive integer >=0 and < vector dimension.")));
+	return;
+      }
+
+      args.GetReturnValue().Set(Number::New(isolate, obj->c[(int)d_num]*1.0));
+    }
+
+    static void set_value(const FunctionCallbackInfo<Value>& args) {
+      Isolate* isolate = args.GetIsolate();
+      jsvec* obj = ObjectWrap::Unwrap<jsvec>(args.Holder());
+      
+      if (args.Length() < 2) {
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate,"2 arguments required!")));
+	return;
+      }
+      
+      if (!args[0]->IsNumber()) {
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Argument 1 must be a Number")));
+	return;
+      }
+
+      if (!args[1]->IsNumber()) {
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Argument 2 must be a Number")));
+	return;
+      }
+      
+      double d_num=(double) args[0]->NumberValue();
+      double d_val=(double) args[1]->NumberValue();
+      
+      if(d_num<0 || d_num>obj->dim-1){
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Argument 1 must be a positive integer >=0 and < vector dimension.")));
+	return;
+      }
+
+      obj->c[(int)d_num]=d_val;
+      
+      args.GetReturnValue().Set(args.Holder());
     }
     
     static void length(const FunctionCallbackInfo<Value>& args) {

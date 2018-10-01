@@ -211,7 +211,8 @@ namespace sadira{
   void fits::New(const FunctionCallbackInfo<Value>& args) {
 
     Isolate* isolate = args.GetIsolate();
-
+    Local<Context> context = isolate->GetCurrentContext();
+    
     if (args.IsConstructCall()) {
       
       //MINFO << "Createing new FITS object !" << endl;
@@ -238,7 +239,11 @@ namespace sadira{
       const int argc = 1;
       Local<Value> argv[argc] = { args[0] };
       Local<Function> cons = Local<Function>::New(isolate, constructor);
-      args.GetReturnValue().Set(cons->NewInstance(argc, argv));
+
+      Local<Object> result =
+	cons->NewInstance(context, argc, argv).ToLocalChecked();
+      args.GetReturnValue().Set(result);
+      //args.GetReturnValue().Set(cons->NewInstance(argc, argv));
 
     }
   }
@@ -574,7 +579,7 @@ namespace sadira{
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
     //obj->file_name=obj->get_file_name(args);
 
-    int hduid = args[0]->ToNumber()->Value();
+    int hduid = args[0]->NumberValue();
     //MINFO << "Setting DU id to " << hduid << endl;
 
     //Local<Array> cutsa = Local<Array>::Cast(args[0]);
@@ -658,10 +663,10 @@ namespace sadira{
     Local<Object> opts_nrows=Local<Object>::Cast(opts->Get( String::NewFromUtf8(isolate, "nrows")));
 
     int row_start=0;
-    if ( ! opts_row_start->IsUndefined() ) row_start= (int) opts_row_start->ToNumber()->Value();
+    if ( ! opts_row_start->IsUndefined() ) row_start= (int) opts_row_start->NumberValue();
 
     int nrows=-1;
-    if ( ! opts_row_start->IsUndefined() )  nrows= (int) opts_nrows->ToNumber()->Value();
+    if ( ! opts_row_start->IsUndefined() )  nrows= (int) opts_nrows->NumberValue();
 
     cout << "Row start= " << row_start << " nr=" << nrows<< endl;
     

@@ -24,12 +24,12 @@ namespace sadira{
   using namespace qk;
   using namespace v8;
   using namespace node;
-
+  
   void free_stream_buffer(char* b, void*x);
   
   template <typename T> class jsmat 
     : public ObjectWrap, public mat<T> {
-
+    
   public:
 
     static Persistent<Function> constructor;
@@ -72,7 +72,8 @@ namespace sadira{
     static void New(const v8::FunctionCallbackInfo<v8::Value>& args) {
       
       Isolate* isolate = args.GetIsolate();
-
+      Local<Context> context = isolate->GetCurrentContext();
+      
       if (args.IsConstructCall()) {
 	// Invoked as constructor: `new MyObject(...)`
 	int d0= (int) args[0]->IsUndefined() ? 0 : args[0]->NumberValue();
@@ -85,7 +86,9 @@ namespace sadira{
 	const int argc = 2;
 	Local<Value> argv[argc] = { args[0], args[1] };
 	Local<Function> cons = Local<Function>::New(isolate, constructor);
-	args.GetReturnValue().Set(cons->NewInstance(argc, argv));
+
+	Local<Object> result =cons->NewInstance(context, argc, argv).ToLocalChecked();
+	args.GetReturnValue().Set(result); //cons->NewInstance(argc, argv));
       }
       
     }
@@ -114,11 +117,12 @@ namespace sadira{
 
     static void NewInstance(const v8::FunctionCallbackInfo<v8::Value>& args){
       Isolate* isolate = args.GetIsolate();
+      Local<Context> context = isolate->GetCurrentContext();
       
       const unsigned argc = 2;
       Local<Value> argv[argc] = { args[0], args[1] };
       Local<Function> cons = Local<Function>::New(isolate, constructor);
-      Local<Object> instance = cons->NewInstance(argc, argv);
+      Local<Object> instance = cons->NewInstance(context, argc, argv).ToLocalChecked();
 
       args.GetReturnValue().Set(instance);
     }
@@ -355,7 +359,7 @@ namespace sadira{
       if (!args[0]->IsObject()) {
 	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Argument must be an Object")));
 	return;
-      }
+     }
       
       Handle<Array> parameters = Handle<Array>::Cast(args[0]);
 
