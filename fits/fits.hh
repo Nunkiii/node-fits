@@ -156,13 +156,29 @@ namespace sadira{
       ndims[0]=_m.dims[0];
       ndims[1]=_m.dims[1];
 
-      MINFO << "writing image types="<< fits_image_type << ", "<< fits_type << endl;
+      MINFO << "write_image: Image Type="<< fits_image_type << ", Fits Type "<< fits_type << endl;
       
       fits_create_img(f, fits_image_type, 2, ndims, &fstat);
       report_fits_error();
 
-      fits_write_subset(f, fits_type, fpix, ndims,_m.c, &fstat);
+      mat<T> check; check.redim(_m.dims[0],_m.dims[1]);
+      
+      for(int k=0;k<20;k++){
+	cout << "check data before ["<<k<<"] : " << _m[k] << endl;
+      }
+      
+      fits_write_subset(f, fits_type, fpix, ndims, _m.c, &fstat);
+
       report_fits_error();
+      long nel=check.dim;
+      int anynul=0;
+      
+      fits_read_img(f, fits_type, 1, nel, NULL, check.data_pointer(), &anynul, &fstat);
+      //fits_read_subset (f, fits_type, fpix, NULL, NULL,	NULL, check.c , NULL, &fstat);
+
+      for(int k=0;k<20;k++){
+	cout << "check data ["<<k<<"] : " << check[k] << endl;
+      }
       
     }
 

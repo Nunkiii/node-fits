@@ -4,7 +4,8 @@
 
 */
 
-var file_name="example.fits"; //or, more usefull: var file_name=process.argv[2]; 
+//var file_name="example.fits"; //or, more usefull:
+var file_name=process.argv[2]; 
 
 //Including the fits plugin. The path must point to a compiled node-fits plugin.
 
@@ -99,9 +100,14 @@ f.get_headers(function(error, headers){
 	    
 	    var ab=image.get_data();
 	    console.log("Image [" + image.width() + ", " +  image.height()+ " ] number of bytes " + ab.length);
-
+	    
             console.log("First pix is " + ab[0]);
-      
+
+	    for(var k=0;k<20;k++){
+		console.log(k + " : " + ab[k]);
+	    }
+
+	    
 	    //... do what you want with the pixels ...
 	}
 	

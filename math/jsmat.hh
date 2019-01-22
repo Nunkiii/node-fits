@@ -57,8 +57,13 @@ namespace sadira{
       NODE_SET_PROTOTYPE_METHOD(tpl, "histogram", gen_histogram);
       NODE_SET_PROTOTYPE_METHOD(tpl, "get_data", get_data);
       NODE_SET_PROTOTYPE_METHOD(tpl, "set_data", set_data);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "set_all", jset_all);
       NODE_SET_PROTOTYPE_METHOD(tpl, "tile",tile);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "add",add);
 
+      NODE_SET_PROTOTYPE_METHOD(tpl, "get_value", jsvec<T>::get_value);
+      NODE_SET_PROTOTYPE_METHOD(tpl, "set_value", jsvec<T>::set_value);
+      
       constructor.Reset(isolate, tpl->GetFunction());
       exports->Set(String::NewFromUtf8(isolate, class_name),tpl->GetFunction());
     }
@@ -161,6 +166,42 @@ namespace sadira{
       args.GetReturnValue().Set(args.Holder());
 
     }
+
+    static void add(const v8::FunctionCallbackInfo<v8::Value>& args){
+      Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
+
+      if (args.Length() < 1) {
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong number of arguments")));
+	return;
+      }
+      
+      Local<Object> ar=Local<Object>::Cast(args[0]);
+      
+      jsmat* m = ObjectWrap::Unwrap<jsmat>(ar);
+
+      (*obj)+=(*m);
+      
+      args.GetReturnValue().Set(args.Holder());
+    }
+
+    static void jset_all(const v8::FunctionCallbackInfo<v8::Value>& args){
+      Isolate* isolate = args.GetIsolate();
+      jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
+
+      if (args.Length() < 1) {
+	isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong number of arguments")));
+	return;
+      }
+      
+      T value = (T) (args[0]->IsUndefined() ? 0 : args[0]->NumberValue());
+      
+      
+      obj->set_all(value);
+      
+      args.GetReturnValue().Set(args.Holder());
+    }
+
     
   
     void rescale_colormap(){
@@ -553,16 +594,40 @@ namespace sadira{
 
       Isolate* isolate = args.GetIsolate();
       jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
+      
+      //MINFO << "DataCheck 0,1 : " << obj->c[0] << ", " << obj->c[1] << endl;
+      
+      
+      
+      
+      
+      //const char* dataptr=(const char*) obj->c;
 
-      MINFO << "DataCheck " << obj->c[0] << ", " << obj->c[obj->dim-1] << endl;
-      MaybeLocal<v8::Object> buu =node::Buffer::Copy(isolate, (const char*) obj->c, obj->dim*sizeof(T));
+      //Buffer buu=node::Buffer::New(isolate, (char*) obj->c, obj->dim*sizeof(T));
 
+      MaybeLocal<v8::Object> buu =node::Buffer::Copy(isolate, (char*) obj->c, obj->dim*sizeof(T));
+      
+      //MaybeLocal<v8::Object> buu = node::Buffer::New(isolate, (char*) obj->c, obj->dim*sizeof(T));
+      //MaybeLocal<v8::Object> buu = node::Buffer::New(isolate, obj->dim*sizeof(T));
+      
       Local<Object> cbuu = buu.ToLocalChecked();
+
+      //char * dat = node::Buffer::Data(cbuu);
+      //T* datu = (T*) dat;
+      
+      //MINFO << "POST DataCheck 0,1 : " << datu[0] << ", " << datu[1] << endl;
+      
+      args.GetReturnValue().Set(cbuu);
+
+
+      //      args.GetReturnValue().Set(node::Buffer::New(isolate, (char*) obj->c, obj->dim*sizeof(T)).ToLocalChecked());
       
       //float * b=(float*)node::Buffer::Data(cbuu);
       //MINFO << "DataCheck after " << b[0] << ", " << b[obj->dim-1] << endl;
       
-      args.GetReturnValue().Set(cbuu);
+      
+
+      
       
       // MaybeLocal<Object> slowBuffer = node::Buffer::New(isolate, obj->dim*4);
       

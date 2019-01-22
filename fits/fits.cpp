@@ -1057,13 +1057,26 @@ namespace sadira{
     
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
 
-    Local<Object> ar=Local<Object>::Cast(args[0]);
 
-    jsmat<unsigned short>* image_data = ObjectWrap::Unwrap<jsmat<unsigned short> >(ar);
+    jsmat<unsigned short>* image_data = node::ObjectWrap::Unwrap<jsmat<unsigned short> >(args[0]->ToObject(isolate));
+							
+    
+    //Local<Object> ar=Local<Object>::Cast(args[0]);
+    //jsmat<unsigned short>* image_data = ObjectWrap::Unwrap<jsmat<unsigned short> >(ar);
+    
+    //MINFO << "write_image_hdu: image type " << typeid(image_data).name() << " bytes= " << (image_data->dims[0]*image_data->dims[1]*2) << " size=" << image_data->dim<< " DIM0 = " << image_data->dims[0] << endl;
     
     obj->check_file_is_open(args,1);
     //obj->open_file(obj->get_file_name(args),1);
 
+    //char* data=(char*) image_data->c;
+    // data+=1;
+    //unsigned short* goodptr=(unsigned short*) data;
+    
+    // for(int i=0;i<20;i++){
+    //   cout << "write_image pixel " << i << " = " << goodptr[i] << endl;
+    // }
+    
     obj->write_image(*image_data);
     obj->close_file();
 

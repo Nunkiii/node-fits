@@ -84,6 +84,8 @@ namespace sadira{
       
     }
 
+  public:
+    
     static void get_value(const FunctionCallbackInfo<Value>& args) {
 
       Isolate* isolate = args.GetIsolate();
@@ -105,7 +107,12 @@ namespace sadira{
 	return;
       }
 
-      args.GetReturnValue().Set(Number::New(isolate, obj->c[(int)d_num]*1.0));
+      double v = (double) obj->c[(int)d_num]*1.0;
+      
+      //MINFO << "Access element " << d_num << " = " << v << endl;
+      
+      
+      args.GetReturnValue().Set(Number::New(isolate, v ));
     }
 
     static void set_value(const FunctionCallbackInfo<Value>& args) {
@@ -148,6 +155,7 @@ namespace sadira{
       args.GetReturnValue().Set(Number::New(isolate, obj->dim));
     }
 
+  private:
     static Persistent<Function> constructor;
     
   };
