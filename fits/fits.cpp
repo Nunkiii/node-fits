@@ -23,8 +23,8 @@ using namespace std;
 namespace sadira{
 
   using namespace qk;
-
-  Persistent<Function> fits::constructor;
+  
+  //Nan::Persistent<Function> fits::constructor;
   
   void free_stream_buffer(char* b, void*x){
     free(b);
@@ -208,8 +208,8 @@ namespace sadira{
   
 
 
-  void fits::New(const FunctionCallbackInfo<Value>& args) {
-
+  void fits::New(const Nan::FunctionCallbackInfo<Value>& args) {
+ 
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();
     
@@ -238,7 +238,7 @@ namespace sadira{
     }else{
       const int argc = 1;
       Local<Value> argv[argc] = { args[0] };
-      Local<Function> cons = Local<Function>::New(isolate, constructor);
+      Local<Function> cons = Nan::New(constructor());
 
       Local<Object> result =
 	cons->NewInstance(context, argc, argv).ToLocalChecked();
@@ -249,7 +249,7 @@ namespace sadira{
   }
 
 
-  void fits::check_file_is_open(const FunctionCallbackInfo<Value>& args, int mode) {
+  void fits::check_file_is_open(const Nan::FunctionCallbackInfo<Value>& args, int mode) {
     Isolate* isolate = args.GetIsolate();
     fits* obj = ObjectWrap::Unwrap<fits>(args.Holder());
 
@@ -283,20 +283,20 @@ namespace sadira{
   
   
   
-  void fits::open(const FunctionCallbackInfo<Value>& args) {
+  void fits::open(const Nan::FunctionCallbackInfo<Value>& args) {
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
     obj->check_file_is_open(args);
     args.GetReturnValue().Set(args.This());
   }
 
-  string fits::get_file_name(const FunctionCallbackInfo<Value>& args) {
+  string fits::get_file_name(const Nan::FunctionCallbackInfo<Value>& args) {
     Isolate* isolate = args.GetIsolate();
     Local<Value> fff=args.This()->Get(String::NewFromUtf8(isolate,"file_name"));
     String::Utf8Value fffu(fff->ToString());
     return (*fffu);
   }
   
-  void fits::set_file(const FunctionCallbackInfo<Value>& args) {
+  void fits::set_file(const Nan::FunctionCallbackInfo<Value>& args) {
     
     //    fits* obj = ObjectWrap::Unwrap<fits>(args.This());
     Isolate* isolate = args.GetIsolate();
@@ -369,7 +369,7 @@ namespace sadira{
     return hdus;
   }
 
-  void fits::get_headers(const FunctionCallbackInfo<Value>& args) {
+  void fits::get_headers(const Nan::FunctionCallbackInfo<Value>& args) {
     
     Isolate* isolate = args.GetIsolate();
 
@@ -499,7 +499,7 @@ namespace sadira{
 
   }
   
-  void fits::set_header_key(const FunctionCallbackInfo<Value>& args) {
+  void fits::set_header_key(const Nan::FunctionCallbackInfo<Value>& args) {
     
     Isolate* isolate = args.GetIsolate();
 
@@ -553,7 +553,7 @@ namespace sadira{
     args.GetReturnValue().Set(args.This());
   }
   
-  void fits::get_headers_array(const FunctionCallbackInfo<Value>& args) {
+  void fits::get_headers_array(const Nan::FunctionCallbackInfo<Value>& args) {
 
     Isolate* isolate = args.GetIsolate();
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
@@ -562,12 +562,12 @@ namespace sadira{
     
     args.GetReturnValue().Set(obj->get_headers_array(isolate));
   }
-
-
-
-
-  void fits::set_hdu(const FunctionCallbackInfo<Value>& args){
-
+  
+  
+  
+  
+  void fits::set_hdu(const Nan::FunctionCallbackInfo<Value>& args){
+    
     
     Isolate* isolate = args.GetIsolate();
 
@@ -598,9 +598,9 @@ namespace sadira{
     }
 
   }
-
-
-  void fits::get_table_column(const FunctionCallbackInfo<Value>& args){
+  
+  
+  void fits::get_table_column(const Nan::FunctionCallbackInfo<Value>& args){
     
     //cout << "Get table column " <<  endl;
 
@@ -642,12 +642,12 @@ namespace sadira{
   }
 
 
-  void fits::get_table_data(const FunctionCallbackInfo<Value>& args){
+  void fits::get_table_data(const Nan::FunctionCallbackInfo<Value>& args){
       
     Isolate* isolate = args.GetIsolate();
 
-    HandleScope handle_scope(isolate);
-    cout << "Handle scope BEGIN N=" << handle_scope.NumberOfHandles(isolate)<<endl;
+    Nan::HandleScope handle_scope;//isolate);
+    cout << "Handle scope BEGIN N=" << handle_scope.NumberOfHandles()<<endl;
     
     if (args.Length() < 1) {
       isolate->ThrowException(Exception::TypeError(String::NewFromUtf8(isolate, "Wrong number of arguments")));
@@ -683,29 +683,28 @@ namespace sadira{
 
       cb->Call(isolate->GetCurrentContext()->Global(), argc, argv );
 
-      cout << "Handle scope N=" << handle_scope.NumberOfHandles(isolate)<<endl;
+      cout << "Handle scope N=" << handle_scope.NumberOfHandles()<<endl;
       //handle_scope->Close();
       //columns->Delete(isolate, columns);
     }
-
+    
     catch (qk::exception &e){
-
+      
       const unsigned argc = 2;
       
       Local<Value> argv[argc] = { String::NewFromUtf8(isolate, e.mess.c_str()), Undefined(isolate) };
       cb->Call(isolate->GetCurrentContext()->Global(), argc, argv );    
     }
-
     args.GetReturnValue().Set(args.This());
     
   }
-
-
+  
+  
   Local<Array> fits::get_table_data(Isolate* isolate, int row_start, int nrows_max){
-
-
+    
+    
     Local<Array> result_object = Array::New(isolate);
-
+    
     
     
     try{
@@ -781,12 +780,12 @@ namespace sadira{
     catch (qk::exception& e){
       isolate->ThrowException(String::NewFromUtf8(isolate, e.mess.c_str()));
     }
-
+    
     return result_object;
-
+    
   }
-
-
+  
+  
   
   Local<Object> fits::get_table_column(Isolate* isolate, int column_id){
 
@@ -891,7 +890,7 @@ namespace sadira{
 
 
 
-  void fits::get_table_columns(const FunctionCallbackInfo<Value>& args){
+  void fits::get_table_columns(const Nan::FunctionCallbackInfo<Value>& args){
 
     Isolate* isolate = args.GetIsolate();
     
@@ -968,7 +967,7 @@ namespace sadira{
   }
   
   
-  void fits::read_image_hdu(const FunctionCallbackInfo<Value>& args){
+  void fits::read_image_hdu(const Nan::FunctionCallbackInfo<Value>& args){
     Isolate* isolate = args.GetIsolate();
     
     if (args.Length() < 1) {
@@ -1046,7 +1045,7 @@ namespace sadira{
   }
 
 
-  void fits::write_image_hdu(const FunctionCallbackInfo<Value>& args){
+  void fits::write_image_hdu(const Nan::FunctionCallbackInfo<Value>& args){
     
     Isolate* isolate = args.GetIsolate();
 
@@ -1058,7 +1057,7 @@ namespace sadira{
     fits* obj = ObjectWrap::Unwrap<fits>(args.This());
 
 
-    jsmat<unsigned short>* image_data = node::ObjectWrap::Unwrap<jsmat<unsigned short> >(args[0]->ToObject(isolate));
+    jsmat<unsigned short>* image_data = Nan::ObjectWrap::Unwrap<jsmat<unsigned short> >(args[0]->ToObject(isolate));
 							
     
     //Local<Object> ar=Local<Object>::Cast(args[0]);
@@ -1226,52 +1225,53 @@ namespace sadira{
     }
 
     return result_object;
-
+    
   }
 
 
   
-  void fits::Init(Local<Object> target) {
+//   void fits::Init(Local<Object> target) {
 
-    Isolate* isolate=target->GetIsolate();
+//     Isolate* isolate=target->GetIsolate();
       
-    Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
+//     Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
     
     
-    tpl->InstanceTemplate()->SetInternalFieldCount(9);
-    tpl->SetClassName(String::NewFromUtf8(isolate,"fits"));
+//     tpl->InstanceTemplate()->SetInternalFieldCount(9);
+//     tpl->SetClassName(String::NewFromUtf8(isolate,"fits"));
 
-    NODE_SET_PROTOTYPE_METHOD(tpl, "open", open);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "get_headers", get_headers);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "get_headers_array", get_headers_array);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "set_hdu",set_hdu);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "set_file",set_file);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "set_header_key",set_header_key);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "get_table_column",get_table_column);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "get_table_columns",get_table_columns);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "get_table_data",get_table_data);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "write_image_hdu",write_image_hdu);
-    NODE_SET_PROTOTYPE_METHOD(tpl, "read_image_hdu",read_image_hdu);
+//     NODE_SET_PROTOTYPE_METHOD(tpl, "open", open);
+//     NODE_SET_PROTOTYPE_METHOD(tpl, "get_headers", get_headers);
+//     NODE_SET_PROTOTYPE_METHOD(tpl, "get_headers_array", get_headers_array);
+//     NODE_SET_PROTOTYPE_METHOD(tpl, "set_hdu",set_hdu);
+//     NODE_SET_PROTOTYPE_METHOD(tpl, "set_file",set_file);
+//     NODE_SET_PROTOTYPE_METHOD(tpl, "set_header_key",set_header_key);
+//     NODE_SET_PROTOTYPE_METHOD(tpl, "get_table_column",get_table_column);
+//     NODE_SET_PROTOTYPE_METHOD(tpl, "get_table_columns",get_table_columns);
+//     NODE_SET_PROTOTYPE_METHOD(tpl, "get_table_data",get_table_data);
+//     NODE_SET_PROTOTYPE_METHOD(tpl, "write_image_hdu",write_image_hdu);
+//     NODE_SET_PROTOTYPE_METHOD(tpl, "read_image_hdu",read_image_hdu);
 
           
-    target->Set(String::NewFromUtf8(isolate,"file"), tpl->GetFunction());
-    constructor.Reset(isolate, tpl->GetFunction());
-  }
+//     target->Set(String::NewFromUtf8(isolate,"file"), tpl->GetFunction());
+//     constructor.Reset(isolate, tpl->GetFunction());
+//   }
 
 }
 
 
+//NAN_MODULE_INIT(Init){
 void init(Local<Object> exports) {
-
+  
   //  sadira::colormap_interface::init(exports);
-
-
+  
+    
   sadira::fits::Init(exports);
-
+  
   //  return;
-
+  
   //some javascriptized quarklib objects
-
+  
   sadira::jsmat<int>::init(exports, "mat_int");
   sadira::jsmat<float>::init(exports, "mat_float");
   sadira::jsmat<double>::init(exports, "mat_double");
@@ -1281,12 +1281,14 @@ void init(Local<Object> exports) {
   sadira::jsmat<short>::init(exports, "mat_short");
   sadira::jsmat<unsigned char>::init(exports, "mat_uchar");
   sadira::jsmat<unsigned short>::init(exports, "mat_ushort");
-
+    
   sadira::jsvec<int>::init(exports,"vec_int");
   sadira::jsvec<float>::init(exports,"vec_float");
   sadira::jsvec<float>::init(exports,"vec_double");
-
-
+  
+    
 }
+
+
 
 NODE_MODULE(fits, init)

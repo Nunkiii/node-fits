@@ -592,10 +592,12 @@ namespace sadira{
     
     static void get_data(const v8::FunctionCallbackInfo<v8::Value>& args) {
 
+      MINFO << "GET DATA" << endl;
+      
       Isolate* isolate = args.GetIsolate();
       jsmat* obj = ObjectWrap::Unwrap<jsmat>(args.Holder());
       
-      //MINFO << "DataCheck 0,1 : " << obj->c[0] << ", " << obj->c[1] << endl;
+      MINFO << "DataCheck 0,1 : " << obj->c[0] << ", " << obj->c[obj->dim-1] << endl;
       
       
       
@@ -617,13 +619,13 @@ namespace sadira{
       
       //MINFO << "POST DataCheck 0,1 : " << datu[0] << ", " << datu[1] << endl;
       
-      args.GetReturnValue().Set(cbuu);
+      args.GetReturnValue().Set(buu);
 
 
       //      args.GetReturnValue().Set(node::Buffer::New(isolate, (char*) obj->c, obj->dim*sizeof(T)).ToLocalChecked());
       
-      //float * b=(float*)node::Buffer::Data(cbuu);
-      //MINFO << "DataCheck after " << b[0] << ", " << b[obj->dim-1] << endl;
+      T * b=(T*)node::Buffer::Data(cbuu);
+      MINFO << "DataCheck after " << b[0] << ", " << b[obj->dim-1] << endl;
       
       
 

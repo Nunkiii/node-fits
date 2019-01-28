@@ -3,7 +3,7 @@
 	{
 	    "target_name": "fits",	
 	    "sources": [ "fits/fits.cpp", "qk/exception.cpp", "qk/pngwriter.cpp", "qk/jpeg_writer.cpp"],
-	    'include_dirs' : [".","/usr/local/cfitsio/include"],
+	    'include_dirs' : [".","/usr/local/cfitsio/include","node_modules/nan"],
 
 	    'xcode_settings': {
 		'OTHER_CFLAGS': [
@@ -43,5 +43,8 @@
 	    
 	},
     ],
+     "dependencies": {
+  	"nan": "*"
+     }	
   }
 

@@ -10,20 +10,48 @@
 
 //#include <nan.h>
 
-#include <math/jsmat.hh>
-#include <math/jsvec.hh>
+#include <math/jsvec_nan.hh>
+#include <math/jsmat_nan.hh>
+
 
 namespace sadira{
   
   using namespace std;
   using namespace v8;
+  using namespace Nan;
   using namespace qk;
   
-  class fits : public node::ObjectWrap {
+  class fits : public ObjectWrap {
 
   public:
+    
+    static NAN_MODULE_INIT(Init) {
+      Local<FunctionTemplate> tpl = Nan::New<FunctionTemplate>(New);
+      
+      
+      tpl->InstanceTemplate()->SetInternalFieldCount(9);
+      tpl->SetClassName(Nan::New<v8::String>("fits").ToLocalChecked());
+      
+      SetPrototypeMethod(tpl, "open", open);
+      SetPrototypeMethod(tpl, "get_headers", get_headers);
+      SetPrototypeMethod(tpl, "get_headers_array", get_headers_array);
+      SetPrototypeMethod(tpl, "set_hdu",set_hdu);
+      SetPrototypeMethod(tpl, "set_file",set_file);
+      SetPrototypeMethod(tpl, "set_header_key",set_header_key);
+      SetPrototypeMethod(tpl, "get_table_column",get_table_column);
+      SetPrototypeMethod(tpl, "get_table_columns",get_table_columns);
+      SetPrototypeMethod(tpl, "get_table_data",get_table_data);
+      SetPrototypeMethod(tpl, "write_image_hdu",write_image_hdu);
+      SetPrototypeMethod(tpl, "read_image_hdu",read_image_hdu);
 
-    static void Init(Local<Object> exports);
+
+      v8::Isolate* isolate=target->GetIsolate();
+      target->Set(v8::String::NewFromUtf8(isolate,"file"), tpl->GetFunction());
+      //target->Set(Nan::New<v8::String>("file").ToLocalChecked, tpl->GetFunction());
+      
+      constructor().Reset(GetFunction(tpl).ToLocalChecked());
+
+    }
 
     // static void NewInstance(const FunctionCallbackInfo<Value>& args){
       
@@ -62,7 +90,6 @@ namespace sadira{
     // }
 
   private:
-    static Persistent<Function> constructor;
     
     explicit fits();
     ~fits();
@@ -82,22 +109,22 @@ namespace sadira{
 
     void send_status_message(Isolate* isolate, Local<Function>& cb,const string& type, const string& message);
 
-    void check_file_is_open(const FunctionCallbackInfo<Value>& args, int mode=0);
+    void check_file_is_open(const Nan::FunctionCallbackInfo<Value>& args, int mode=0);
 
     //    Local<node::Buffer> gen_pngtile(Local<Array>& parameters);
     
-    static void New(const FunctionCallbackInfo<Value>& args);
-    static void open(const FunctionCallbackInfo<Value>& args);
-    static void set_file(const FunctionCallbackInfo<Value>& args);
-    static void get_headers(const FunctionCallbackInfo<Value>& args);
-    static void get_headers_array(const FunctionCallbackInfo<Value>& args);
-    static void set_header_key(const FunctionCallbackInfo<Value>& args);
-    static void write_image_hdu(const FunctionCallbackInfo<Value>& args);
-    static void read_image_hdu(const FunctionCallbackInfo<Value>& args);
-    static void set_hdu(const FunctionCallbackInfo<Value>& args);
-    static void get_table_column(const FunctionCallbackInfo<Value>& args);
-    static void get_table_columns(const FunctionCallbackInfo<Value>& args);
-    static void get_table_data(const FunctionCallbackInfo<Value>& args);
+    static void New(const Nan::FunctionCallbackInfo<Value>& args);
+    static void open(const Nan::FunctionCallbackInfo<Value>& args);
+    static void set_file(const Nan::FunctionCallbackInfo<Value>& args);
+    static void get_headers(const Nan::FunctionCallbackInfo<Value>& args);
+    static void get_headers_array(const Nan::FunctionCallbackInfo<Value>& args);
+    static void set_header_key(const Nan::FunctionCallbackInfo<Value>& args);
+    static void write_image_hdu(const Nan::FunctionCallbackInfo<Value>& args);
+    static void read_image_hdu(const Nan::FunctionCallbackInfo<Value>& args);
+    static void set_hdu(const Nan::FunctionCallbackInfo<Value>& args);
+    static void get_table_column(const Nan::FunctionCallbackInfo<Value>& args);
+    static void get_table_columns(const Nan::FunctionCallbackInfo<Value>& args);
+    static void get_table_data(const Nan::FunctionCallbackInfo<Value>& args);
 
     
     Local<Object> get_table_column(Isolate* isolate, int column_id);
@@ -108,11 +135,11 @@ namespace sadira{
     void report_fits_error();
 
     //    Local<String> create_image_histogram(double* cuts);
-    //    static Local<Value> gen_histogram(const FunctionCallbackInfo<Value>& args);
+    //    static Local<Value> gen_histogram(const Nan::FunctionCallbackInfo<Value>& args);
 
     double counter_;
 
-    string get_file_name(const FunctionCallbackInfo<Value>& args);
+    string get_file_name(const Nan::FunctionCallbackInfo<Value>& args);
     
     template <typename T>
 
@@ -182,7 +209,14 @@ namespace sadira{
       
     }
 
-
+  private:
+    
+    static inline Nan::Persistent<v8::Function> & constructor() {
+      static Nan::Persistent<v8::Function> my_constructor;
+      return my_constructor;
+    }
+    
+    
   protected:
     
 
@@ -257,32 +291,36 @@ namespace sadira{
     Local<Value> create_matrix_type(Isolate* isolate, int _ftype, mem<long>&hdd){
 
       const int argc = 2;
-      Local<Value> argv[argc] = { Number::New(isolate, hdd[0]),  Number::New(isolate, hdd[1]) };
-      Local<Function> cons; 
+      Local<Value> argv[argc] = { Nan::New((int32_t) hdd[0]),  Nan::New((int32_t) hdd[1]) };
+      v8::Local<v8::Function> cons;
+      //Local<Nan::Persistent<v8::Function>> cons; 
       //Local<Object> instance = cons->NewInstance(argc, argv);
       
+      //Local<Object> instance = jsmat<unsigned char>::NewInstance();
+      
       switch (_ftype){
-      case TBYTE: cons = Local<Function>::New(isolate, jsmat<unsigned char>::constructor); break;
-      case TSBYTE: cons = Local<Function>::New(isolate, jsmat<char>::constructor); break;
-      case TSHORT: cons = Local<Function>::New(isolate, jsmat<short int>::constructor); break;
-      case TUSHORT: cons = Local<Function>::New(isolate, jsmat<unsigned short int>::constructor); break;
-      case TLONG: cons = Local<Function>::New(isolate, jsmat<int>::constructor); break;
-      case TULONG: cons = Local<Function>::New(isolate, jsmat<unsigned int>::constructor); break;
-      case TLONGLONG: cons = Local<Function>::New(isolate, jsmat<long int>::constructor);break;
-      case TDOUBLE: cons = Local<Function>::New(isolate, jsmat<double>::constructor);break;
-      case TFLOAT: cons = Local<Function>::New(isolate, jsmat<float>::constructor);break;
+      case TBYTE: cons = Nan::New<v8::Function>( jsmat<unsigned char>::constructor()); break;
+      case TSBYTE: cons = Nan::New<v8::Function>( jsmat<char>::constructor()); break;
+      case TSHORT: cons = Nan::New<v8::Function>( jsmat<short int>::constructor()); break;
+      case TUSHORT: cons = Nan::New<v8::Function>( jsmat<unsigned short int>::constructor()); break;
+      case TLONG: cons = Nan::New<v8::Function>( jsmat<int>::constructor()); break;
+      case TULONG: cons = Nan::New<v8::Function>( jsmat<unsigned int>::constructor()); break;
+      case TLONGLONG: cons = Nan::New<v8::Function>( jsmat<long int>::constructor());break;
+      case TDOUBLE: cons = Nan::New<v8::Function>( jsmat<double>::constructor());break;
+      case TFLOAT: cons = Nan::New<v8::Function>( jsmat<float>::constructor());break;
       default:
 	MERROR << "Cannot find suitable jsmat type for FITS data type " << _ftype << endl;
 	return Local<Value>(Undefined(isolate));
       };
 
 
-      Local<Context> context = isolate->GetCurrentContext();
-      Local<Object> result =cons->NewInstance(context, argc, argv).ToLocalChecked();
+      //Local<Context> context = isolate->GetCurrentContext();
+      Local<Object> result =Nan::NewInstance(cons,  argc, argv).ToLocalChecked();
       
       return result; //cons->NewInstance(argc, argv); 
     }
 
+    
     //std::string file_name;
     char fitsio_error_buffer[1024];
     FILE* ffitsio_error;
@@ -291,6 +329,9 @@ namespace sadira{
     
     fitsfile* f;
   };
+
+      
+  
   
   
 }
