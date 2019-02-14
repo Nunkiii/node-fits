@@ -27,5 +27,8 @@
   "bugs": {
     "url": "https://github.com/Nunkiii/node-fits/issues"
   },
-  "homepage": "https://github.com/Nunkiii/node-fits#readme"
+  "homepage": "https://github.com/Nunkiii/node-fits#readme",
+  "dependencies": {
+    "nan": "^2.12.1"
+  }
 }
