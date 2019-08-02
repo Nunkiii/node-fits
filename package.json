@@ -29,6 +29,6 @@
   },
   "homepage": "https://github.com/Nunkiii/node-fits#readme",
   "dependencies": {
-    "nan": "^2.12.1"
+    "nan": "^2.14.0"
   }
 }
