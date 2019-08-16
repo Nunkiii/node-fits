@@ -9,7 +9,7 @@ The `node-fits` module has been successfully compiled and tested on gnu/linux an
 
 You will need to install the development versions of libpng, libjpeg and libcfitsio. The package names may differ in your distribution. On a debian-based system, the following command should install the required libraries.
 
-    #apt-get install node node-gyp g++ libpng-dev libjpeg-dev libcfitsio-dev 
+    sudo apt install node node-gyp g++ libpng-dev libjpeg-dev libcfitsio-dev 
    
 In the node-fits directory, the following commands will build the module:
 
@@ -27,15 +27,15 @@ The test.js file, in the node-fits/test directory, loads an example FITS image f
 
 To run the test : 
 
-    $node test.js
+    node test.js
 
 It should display headers onthe console and output two images in the test directory.
 
     
 First the package is loaded and a new fits object constructed. The file is automatically opened for reading if the file name is specified on constructor.
 
-      var fits=require("../build/Release/fits");
-      var f = new fits.file("example.fits"); 
+    var fits=require("../build/Release/fits");
+    var f = new fits.file("example.fits"); 
 
 
 The file can also be specified as the `file_name` property of the `fits` object. The file is not opened immediately but will be automatically when needed.
