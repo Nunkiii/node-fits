@@ -190,9 +190,9 @@ namespace sadira{
 
       mat<T> check; check.redim(_m.dims[0],_m.dims[1]);
       
-      for(int k=0;k<20;k++){
-	cout << "check data before ["<<k<<"] : " << _m[k] << endl;
-      }
+      // for(int k=0;k<20;k++){
+      // 	cout << "check data before ["<<k<<"] : " << _m[k] << endl;
+      // }
       
       fits_write_subset(f, fits_type, fpix, ndims, _m.c, &fstat);
 
@@ -203,9 +203,9 @@ namespace sadira{
       fits_read_img(f, fits_type, 1, nel, NULL, check.data_pointer(), &anynul, &fstat);
       //fits_read_subset (f, fits_type, fpix, NULL, NULL,	NULL, check.c , NULL, &fstat);
 
-      for(int k=0;k<20;k++){
-	cout << "check data ["<<k<<"] : " << check[k] << endl;
-      }
+      // for(int k=0;k<20;k++){
+      // 	cout << "check data ["<<k<<"] : " << check[k] << endl;
+      // }
       
     }
 
