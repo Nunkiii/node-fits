@@ -1,24 +1,50 @@
-A set of (experimental) tools to access FITS files from Node.
-=========
+node-fits: a set of (experimental) tools to access FITS files from Node.
+============
 
-FITS is a versatile file format used to store astronomical images and data (http://fits.gsfc.nasa.gov/fits_home.html). This node plugin 
+FITS is a versatile file format used to store astronomical images and
+data (http://fits.gsfc.nasa.gov/fits_home.html). This node plugin
 
-### To build:
+## Install node.js
+Skip if you already installed node.js on your machine.
 
-The `node-fits` module has been successfully compiled and tested on gnu/linux and on MacOS. node-gyp can be used as the building tool. Other platforms have not been tested yet.
+From:
+http://yoember.com/nodejs/the-best-way-to-install-node-js/
 
-You will need to install the development versions of libpng, libjpeg and libcfitsio. The package names may differ in your distribution. On a debian-based system, the following command should install the required libraries.
+On Linux (other OS are treated in the previous link):
 
-    sudo apt install node node-gyp g++ libpng-dev libjpeg-dev libcfitsio-dev 
-   
-In the node-fits directory, the following commands will build the module:
 
-    $node-gyp configure
-    $node-gyp build
-    
-Or let `npm` do it for you:
- 
-    npm -f install
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.1/install.sh | bash
+
+    nvm ls-remote
+    nvm list
+    nvm install lts/dubnium
+    nvm use lts/dubnium
+    nvm alias default lts/dubnium
+    node -v
+    npm install -g npm
+    npm -v
+    source ~/.nvm/nvm.sh
+
+
+## Install dependecies needed by `node-fits`:
+
+The `node-fits` module compiles on GNU/Linux with g++. `node-gyp` is used as building tool. Other platforms have not been tested yet.
+
+You will need to install the development versions of libpng, libjpeg
+and libcfitsio. The package names may differ in your distribution. On
+a debian-based system, the following command should install the
+required libraries.
+
+    sudo apt install g++ libpng-dev libcfitsio-dev 
+
+
+
+## Install this package
+
+    # Cloning and installing dependencies
+    git clone https://github.com/Nunkiii/node-fits.git
+    cd node-fits/
+    npm install
 
 
 ### Testing
